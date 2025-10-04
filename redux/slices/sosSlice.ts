@@ -17,8 +17,8 @@ const initialState: SOSState = {
 export const logSOSEvent = createAsyncThunk(
   'sos/logSOSEvent',
   async (sosData: { location: any; message: string; timestamp: string; userId?: string }) => {
-    await logSOSEventService(sosData);
-    return { ...sosData, id: Date.now().toString() } as SOSEvent;
+    const id = await logSOSEventService(sosData);
+    return { ...sosData, id, status: 'active' } as SOSEvent;
   }
 );
 

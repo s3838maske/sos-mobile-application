@@ -62,7 +62,7 @@ export default function LiveLocationMap({ location, permissionGranted }: LiveLoc
         <View style={styles.statusItem}>
           <Ionicons name="time" size={16} color="#3498db" />
           <Text style={styles.statusText}>
-            {location.timestamp.toLocaleTimeString()}
+            {new Date(location.timestamp).toLocaleTimeString()}
           </Text>
         </View>
       </View>

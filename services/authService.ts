@@ -7,6 +7,7 @@ import {
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { User as AppUser, EmergencyContact } from '../redux/types';
 import { auth, db } from './firebase';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Sign in with email and password
 export const signInUser = async (email: string, password: string): Promise<AppUser> => {
@@ -93,6 +94,8 @@ export const signUpUser = async (
 export const signOutUser = async (): Promise<void> => {
   try {
     await signOut(auth);
+    // Ensure local session artifacts are cleared
+    await AsyncStorage.removeItem('authToken');
   } catch (error: any) {
     throw new Error(error.message || 'Failed to sign out');
   }

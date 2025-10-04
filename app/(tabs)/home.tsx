@@ -19,10 +19,11 @@ import {
   startLocationTracking,
   stopTracking,
 } from "../../redux/slices/locationSlice";
-import { logSOSEvent } from "../../redux/slices/sosSlice";
+import { logSOSEvent, updateSOSStatus } from "../../redux/slices/sosSlice";
 import { AppDispatch, RootState } from "../../redux/store";
 import { startLocationTracking as startLocationService } from "../../services/locationService";
 import LiveLocationMap from "../home/components/LiveLocationMap";
+import NearbyHelpCenters from "../home/components/NearbyHelpCenters";
 import SOSButton from "../home/components/SOSButton";
 
 export default function HomeScreen() {
@@ -31,7 +32,7 @@ export default function HomeScreen() {
   const { currentLocation, isTracking } = useSelector(
     (state: RootState) => state.location
   );
-  const { isActive } = useSelector((state: RootState) => state.sos);
+  const { isActive, events } = useSelector((state: RootState) => state.sos);
 
   const [shakeEnabled, setShakeEnabled] = useState(false);
   const [subscription, setSubscription] = useState<any>(null);
@@ -39,7 +40,7 @@ export default function HomeScreen() {
 
   useEffect(() => {
     // Request location permission and get current location
-    // dispatch(getCurrentLocation());
+    dispatch(getCurrentLocation());
   }, []);
 
   // Cleanup location subscription on unmount
@@ -82,6 +83,22 @@ export default function HomeScreen() {
 
   const handleSOSPress = async () => {
     try {
+      // If already active, resolve the current active event instead of creating a new one
+      if (isActive) {
+        const activeEvent = events.find((e) => e.status === 'active');
+        if (activeEvent) {
+          await dispatch(updateSOSStatus({ eventId: activeEvent.id, status: 'resolved' })).unwrap();
+          Alert.alert(
+            "SOS Deactivated",
+            "Your active SOS has been resolved.",
+            [{ text: "OK" }]
+          );
+        } else {
+          // Fallback: no event found but isActive true; just inform user
+          Alert.alert("SOS", "No active SOS event found to resolve.");
+        }
+        return;
+      }
       // Get current location
       const locationResult = await dispatch(getCurrentLocation());
 
@@ -98,6 +115,7 @@ export default function HomeScreen() {
             },
             message: "Emergency SOS activated",
             timestamp: new Date().toISOString(),
+            userId: user?.uid,
           })
         );
 
@@ -106,7 +124,7 @@ export default function HomeScreen() {
           const isAvailable = await SMS.isAvailableAsync();
           if (isAvailable) {
             const emergencyNumbers = user.emergencyContacts.map(
-              (contact) => contact.phone
+              (contact: { name: string; phone: string; relation: string }) => contact.phone
             );
             const message = `EMERGENCY SOS ALERT!\n\nUser: ${
               user.name
@@ -279,7 +297,7 @@ export default function HomeScreen() {
       {/* Nearby Help Centers */}
       <View style={styles.helpSection}>
         <Text style={styles.sectionTitle}>Nearby Help Centers</Text>
-        {/* <NearbyHelpCenters /> */}
+        <NearbyHelpCenters userLocation={currentLocation} />
       </View>
     </ScrollView>
   );

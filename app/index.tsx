@@ -1,6 +1,7 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { onAuthStateChanged } from 'firebase/auth';
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { setUser } from '../redux/slices/authSlice';
@@ -11,31 +12,47 @@ export default function Index() {
   const router = useRouter();
   const dispatch = useDispatch<AppDispatch>();
   const { isAuthenticated, isLoading } = useSelector((state: RootState) => state.auth);
+  const [initialized, setInitialized] = useState(false);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
-        // User is signed in, redirect to home
-        dispatch(setUser({
-          uid: user.uid,
-          name: user.displayName || 'User',
-          email: user.email || '',
-          phone: user.phoneNumber || '',
-          emergencyContacts: [],
-          createdAt: new Date().toISOString(),
-        }));
-        router.replace('/(tabs)/home' as any);
-      } else {
-        // User is signed out, redirect to login
-        dispatch(setUser(null));
-        router.replace('/auth/login' as any);
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      try {
+        if (user) {
+          // Persist token for session continuity
+          const token = await user.getIdToken();
+          await AsyncStorage.setItem('authToken', token);
+
+          dispatch(setUser({
+            uid: user.uid,
+            name: user.displayName || 'User',
+            email: user.email || '',
+            phone: user.phoneNumber || '',
+            emergencyContacts: [],
+            createdAt: new Date().toISOString(),
+          }));
+        } else {
+          await AsyncStorage.removeItem('authToken');
+          dispatch(setUser(null));
+        }
+      } finally {
+        setInitialized(true);
       }
     });
 
     return () => unsubscribe();
   }, []);
 
-  if (isLoading) {
+  // Navigate after auth state is initialized to avoid flicker and conflicting redirects
+  useEffect(() => {
+    if (!initialized) return;
+    if (isAuthenticated) {
+      router.replace('/(tabs)/home' as any);
+    } else {
+      router.replace('/auth/login' as any);
+    }
+  }, [initialized, isAuthenticated]);
+
+  if (isLoading || !initialized) {
     return (
       <View style={styles.container}>
         <ActivityIndicator size="large" color="#e74c3c" />

@@ -67,7 +67,7 @@ export const startLocationTracking = createAsyncThunk(
         latitude: location.coords.latitude,
         longitude: location.coords.longitude,
         accuracy: location.coords.accuracy || 0,
-        updatedAt: new Date(),
+        updatedAt: new Date().toISOString(),
       };
       
       // Store initial location in Firestore

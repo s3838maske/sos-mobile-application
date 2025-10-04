@@ -8,14 +8,15 @@ export const logSOSEvent = async (eventData: {
   message: string;
   timestamp: string;
   userId?: string;
-}): Promise<void> => {
+}): Promise<string> => {
   try {
-    await addDoc(collection(db, 'sos_logs'), {
+    const docRef = await addDoc(collection(db, 'sos_logs'), {
       ...eventData,
       timestamp: eventData.timestamp,
       status: 'active',
       createdAt: new Date(),
     });
+    return docRef.id;
   } catch (error: any) {
     throw new Error(error.message || 'Failed to log SOS event');
   }

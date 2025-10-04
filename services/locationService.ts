@@ -128,7 +128,7 @@ export const getLocationFromAddress = async (address: string): Promise<LocationD
         latitude: location.latitude,
         longitude: location.longitude,
         accuracy: 0, // Geocoded locations don't have accuracy
-        timestamp: new Date(),
+        timestamp: new Date().toISOString(),
       };
     }
     return null;

@@ -1,11 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
 import {
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { LocationData } from '../../../redux/types';
 
@@ -150,7 +150,7 @@ const styles = StyleSheet.create({
   container: {
     backgroundColor: 'white',
     borderRadius: 10,
-    padding: 15,
+    padding: 10,
   },
   title: {
     fontSize: 18,
@@ -173,10 +173,14 @@ const styles = StyleSheet.create({
     width: 200,
     backgroundColor: '#f8f9fa',
     borderRadius: 10,
-    padding: 15,
+    padding: 10,
     marginRight: 15,
     borderWidth: 1,
     borderColor: '#e1e8ed',
+    display: 'flex',
+    flexDirection: 'column',
+    // alignItems: 'center',
+    justifyContent: 'space-between',
   },
   centerHeader: {
     flexDirection: 'row',
