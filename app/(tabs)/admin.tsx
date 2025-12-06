@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import {
-    Alert,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Alert,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchSOSEvents } from '../../redux/slices/sosSlice';
@@ -21,7 +21,7 @@ export default function AdminScreen() {
 
   useEffect(() => {
     // Fetch SOS events when component mounts
-    dispatch(fetchSOSEvents());
+    dispatch(fetchSOSEvents(100));
   }, []);
 
   // Check if user is admin
@@ -41,14 +41,15 @@ export default function AdminScreen() {
   }
 
   const handleRefresh = () => {
-    dispatch(fetchSOSEvents());
+    dispatch(fetchSOSEvents(100));
   };
 
   const getStatistics = () => {
-    const totalEvents = events.length;
-    const activeEvents = events.filter(event => event.status === 'active').length;
-    const resolvedEvents = events.filter(event => event.status === 'resolved').length;
-    const todayEvents = events.filter(event => {
+    const safeEvents = events || [];
+    const totalEvents = safeEvents.length;
+    const activeEvents = safeEvents.filter(event => event.status === 'active').length;
+    const resolvedEvents = safeEvents.filter(event => event.status === 'resolved').length;
+    const todayEvents = safeEvents.filter(event => {
       const today = new Date();
       const eventDate = new Date(event.timestamp);
       return eventDate.toDateString() === today.toDateString();
@@ -77,17 +78,17 @@ export default function AdminScreen() {
           <Text style={styles.statNumber}>{stats.totalEvents}</Text>
           <Text style={styles.statLabel}>Total Events</Text>
         </View>
-        
+
         <View style={styles.statCard}>
           <Text style={[styles.statNumber, { color: '#e74c3c' }]}>{stats.activeEvents}</Text>
           <Text style={styles.statLabel}>Active</Text>
         </View>
-        
+
         <View style={styles.statCard}>
           <Text style={[styles.statNumber, { color: '#27ae60' }]}>{stats.resolvedEvents}</Text>
           <Text style={styles.statLabel}>Resolved</Text>
         </View>
-        
+
         <View style={styles.statCard}>
           <Text style={[styles.statNumber, { color: '#3498db' }]}>{stats.todayEvents}</Text>
           <Text style={styles.statLabel}>Today</Text>
@@ -104,7 +105,7 @@ export default function AdminScreen() {
             SOS Logs
           </Text>
         </TouchableOpacity>
-        
+
         <TouchableOpacity
           style={[styles.tab, activeTab === 'heatmap' && styles.activeTab]}
           onPress={() => setActiveTab('heatmap')}
@@ -132,33 +133,33 @@ export default function AdminScreen() {
       {activeTab === 'logs' ? (
         <View style={styles.contentContainer}>
           <Text style={styles.contentTitle}>SOS Event Logs</Text>
-          <SOSLogsTable events={events} isLoading={isLoading} />
+          <SOSLogsTable events={events || []} isLoading={isLoading} />
         </View>
       ) : (
         <View style={styles.contentContainer}>
           <Text style={styles.contentTitle}>Safety Heatmap</Text>
-          <HeatmapView events={events} />
+          <HeatmapView events={events || []} />
         </View>
       )}
 
       {/* Quick Actions */}
       <View style={styles.actionsContainer}>
         <Text style={styles.actionsTitle}>Quick Actions</Text>
-        
+
         <TouchableOpacity
           style={styles.actionButton}
           onPress={() => Alert.alert('Export Data', 'Export functionality coming soon!')}
         >
           <Text style={styles.actionButtonText}>Export Data</Text>
         </TouchableOpacity>
-        
+
         <TouchableOpacity
           style={styles.actionButton}
           onPress={() => Alert.alert('Generate Report', 'Report generation coming soon!')}
         >
           <Text style={styles.actionButtonText}>Generate Report</Text>
         </TouchableOpacity>
-        
+
         <TouchableOpacity
           style={styles.actionButton}
           onPress={() => Alert.alert('Send Alerts', 'Alert system coming soon!')}

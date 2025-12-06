@@ -1,10 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import {
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    ViewStyle,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  ViewStyle,
 } from 'react-native';
 
 interface CallButtonProps {
@@ -15,12 +15,12 @@ interface CallButtonProps {
   style?: ViewStyle;
 }
 
-export default function CallButton({ 
-  title, 
-  onPress, 
-  icon, 
-  color, 
-  style 
+export default function CallButton({
+  title,
+  onPress,
+  icon,
+  color,
+  style
 }: CallButtonProps) {
   return (
     <TouchableOpacity
@@ -40,6 +40,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 15,
+    marginBlock: 5,
     paddingHorizontal: 20,
     borderRadius: 10,
     shadowColor: '#000',

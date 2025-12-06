@@ -3,6 +3,7 @@ import { Accelerometer } from "expo-sensors";
 import * as SMS from "expo-sms";
 import React, { useEffect, useRef, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   ScrollView,
   StyleSheet,
@@ -22,6 +23,7 @@ import {
 import { logSOSEvent, updateSOSStatus } from "../../redux/slices/sosSlice";
 import { AppDispatch, RootState } from "../../redux/store";
 import { startLocationTracking as startLocationService } from "../../services/locationService";
+import { getAddressFromCoordinates } from "../../utils/geocoding";
 import LiveLocationMap from "../home/components/LiveLocationMap";
 import NearbyHelpCenters from "../home/components/NearbyHelpCenters";
 import SOSButton from "../home/components/SOSButton";
@@ -36,6 +38,7 @@ export default function HomeScreen() {
 
   const [shakeEnabled, setShakeEnabled] = useState(false);
   const [subscription, setSubscription] = useState<any>(null);
+  const [sosLoading, setSosLoading] = useState(false);
   const locationSubscriptionRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
@@ -83,6 +86,8 @@ export default function HomeScreen() {
 
   const handleSOSPress = async () => {
     try {
+      setSosLoading(true);
+
       // If already active, resolve the current active event instead of creating a new one
       if (isActive) {
         const activeEvent = events.find((e) => e.status === 'active');
@@ -99,13 +104,25 @@ export default function HomeScreen() {
         }
         return;
       }
+
       // Get current location
       const locationResult = await dispatch(getCurrentLocation());
 
       if (locationResult.payload) {
         const location = locationResult.payload as any;
 
-        // Log SOS event to Firestore
+        // Get address from coordinates for SMS
+        let address = `${location.latitude}, ${location.longitude}`;
+        try {
+          address = await getAddressFromCoordinates(
+            location.latitude,
+            location.longitude
+          );
+        } catch (geocodeError) {
+          console.warn('Failed to geocode for SMS, using coordinates');
+        }
+
+        // Log SOS event to Firestore (this will also geocode and save address)
         await dispatch(
           logSOSEvent({
             location: {
@@ -116,21 +133,18 @@ export default function HomeScreen() {
             message: "Emergency SOS activated",
             timestamp: new Date().toISOString(),
             userId: user?.uid,
+            userName: user?.name,
           })
         );
 
-        // Send SMS to emergency contacts
+        // Send SMS to emergency contacts with address
         if (user?.emergencyContacts && user.emergencyContacts.length > 0) {
           const isAvailable = await SMS.isAvailableAsync();
           if (isAvailable) {
             const emergencyNumbers = user.emergencyContacts.map(
               (contact: { name: string; phone: string; relation: string }) => contact.phone
             );
-            const message = `EMERGENCY SOS ALERT!\n\nUser: ${
-              user.name
-            }\nLocation: ${location.latitude}, ${
-              location.longitude
-            }\nTime: ${new Date().toLocaleString()}\n\nPlease help immediately!`;
+            const message = `EMERGENCY SOS ALERT!\n\nUser: ${user.name}\nLocation: ${address}\nTime: ${new Date().toLocaleString()}\n\nPlease help immediately!`;
 
             await SMS.sendSMSAsync(emergencyNumbers, message);
           }
@@ -153,6 +167,8 @@ export default function HomeScreen() {
       Alert.alert("Error", "Failed to activate SOS. Please try again.", [
         { text: "OK" },
       ]);
+    } finally {
+      setSosLoading(false);
     }
   };
 
@@ -211,8 +227,8 @@ export default function HomeScreen() {
       'Are you sure you want to logout?',
       [
         { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Logout', 
+        {
+          text: 'Logout',
           style: 'destructive',
           onPress: async () => {
             try {
@@ -243,7 +259,14 @@ export default function HomeScreen() {
 
       {/* SOS Button */}
       <View style={styles.sosSection}>
-        <SOSButton isActive={isActive} onPress={handleSOSPress} />
+        {sosLoading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#e74c3c" />
+            <Text style={styles.loadingText}>Activating SOS...</Text>
+          </View>
+        ) : (
+          <SOSButton isActive={isActive} onPress={handleSOSPress} />
+        )}
         <Text style={styles.sosText}>
           Press the button or shake your device to activate SOS
         </Text>
@@ -436,6 +459,17 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#7f8c8d",
     lineHeight: 20,
+  },
+  loadingContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 40,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: "#e74c3c",
+    marginTop: 15,
+    fontWeight: "600",
   },
   helpSection: {
     backgroundColor: "#ffffff",

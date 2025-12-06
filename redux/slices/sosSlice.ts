@@ -1,8 +1,8 @@
 import { createAsyncThunk, createSlice, PayloadAction } from '@reduxjs/toolkit';
 import {
-    fetchSOSEvents as fetchSOSEventsService,
-    logSOSEvent as logSOSEventService,
-    updateSOSEventStatus,
+  fetchSOSEvents as fetchSOSEventsService,
+  logSOSEvent as logSOSEventService,
+  updateSOSEventStatus,
 } from '../../services/sosService';
 import { SOSEvent, SOSState } from '../types';
 
@@ -16,7 +16,7 @@ const initialState: SOSState = {
 // Async thunks
 export const logSOSEvent = createAsyncThunk(
   'sos/logSOSEvent',
-  async (sosData: { location: any; message: string; timestamp: string; userId?: string }) => {
+  async (sosData: { location: any; message: string; timestamp: string; userId?: string; userName?: string }) => {
     const id = await logSOSEventService(sosData);
     return { ...sosData, id, status: 'active' } as SOSEvent;
   }

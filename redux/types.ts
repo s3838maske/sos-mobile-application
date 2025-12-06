@@ -16,7 +16,9 @@ export interface EmergencyContact {
 export interface SOSEvent {
   id: string;
   userId: string;
+  userName?: string;
   location: LocationData;
+  address?: string;
   message: string;
   timestamp: string;
   status: 'active' | 'resolved' | 'false_alarm';

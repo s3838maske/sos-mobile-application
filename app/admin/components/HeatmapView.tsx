@@ -1,10 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import {
-    ScrollView,
-    StyleSheet,
-    Text,
-    View,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
 } from 'react-native';
 import { SOSEvent } from '../../../redux/types';
 
@@ -13,14 +13,16 @@ interface HeatmapViewProps {
 }
 
 export default function HeatmapView({ events }: HeatmapViewProps) {
+  // Filter events that have valid location data
+  const eventsWithLocation = events.filter(event => event.location && event.location.latitude && event.location.longitude);
+
   // Group events by location for heatmap visualization
-  const locationGroups = events.reduce((acc, event) => {
-    const key = `${event.latitude.toFixed(3)},${event.longitude.toFixed(3)}`;
+  const locationGroups = eventsWithLocation.reduce((acc, event) => {
+    const key = `${event.location.latitude.toFixed(3)},${event.location.longitude.toFixed(3)}`;
     if (!acc[key]) {
       acc[key] = {
-        location: event.location,
-        latitude: event.latitude,
-        longitude: event.longitude,
+        latitude: event.location.latitude,
+        longitude: event.location.longitude,
         count: 0,
         events: [],
       };
@@ -92,7 +94,11 @@ export default function HeatmapView({ events }: HeatmapViewProps) {
       </View>
 
       {/* Heatmap Data */}
-      <ScrollView style={styles.heatmapContainer} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.heatmapContainer}
+        nestedScrollEnabled={true}
+        showsVerticalScrollIndicator={true}
+      >
         {sortedLocations.map((location: any, index) => (
           <View key={index} style={styles.locationCard}>
             <View style={styles.locationHeader}>
@@ -101,7 +107,9 @@ export default function HeatmapView({ events }: HeatmapViewProps) {
                 { backgroundColor: getIntensityColor(location.count) }
               ]} />
               <View style={styles.locationInfo}>
-                <Text style={styles.locationText}>{location.location}</Text>
+                <Text style={styles.locationText}>
+                  Location {index + 1}
+                </Text>
                 <Text style={styles.coordinatesText}>
                   {location.latitude.toFixed(6)}, {location.longitude.toFixed(6)}
                 </Text>

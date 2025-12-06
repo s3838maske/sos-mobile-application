@@ -1,6 +1,9 @@
-import React, { useState } from 'react';
+import { Ionicons } from '@expo/vector-icons';
+import React, { useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
+  Modal,
   ScrollView,
   StyleSheet,
   Text,
@@ -8,16 +11,30 @@ import {
   View,
 } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
-import { updateUserProfile } from '../../redux/slices/authSlice';
+import {
+  addEmergencyContact,
+  refreshUserData,
+  removeEmergencyContact,
+  updateEmergencyContact,
+  updateUserProfile,
+} from '../../redux/slices/authSlice';
 import { AppDispatch, RootState } from '../../redux/store';
+import { EmergencyContact as EmergencyContactType } from '../../redux/types';
 import EmergencyContacts from '../profile/components/EmergencyContacts';
 import ProfileCard from '../profile/components/ProfileCard';
 
 export default function ProfileScreen() {
   const dispatch = useDispatch<AppDispatch>();
-  const { user } = useSelector((state: RootState) => state.auth);
+  const { user, isLoading } = useSelector((state: RootState) => state.auth);
   const [isEditing, setIsEditing] = useState(false);
   const [showEmergencyContacts, setShowEmergencyContacts] = useState(false);
+
+  // Refresh user data when component mounts
+  useEffect(() => {
+    if (user?.uid) {
+      dispatch(refreshUserData(user.uid));
+    }
+  }, []);
 
   const handleSaveProfile = async (updatedData: any) => {
     try {
@@ -25,7 +42,7 @@ export default function ProfileScreen() {
         await dispatch(updateUserProfile({
           ...user,
           ...updatedData,
-        }));
+        })).unwrap();
         setIsEditing(false);
         Alert.alert('Success', 'Profile updated successfully!');
       }
@@ -35,26 +52,49 @@ export default function ProfileScreen() {
     }
   };
 
-  const handleAddEmergencyContact = (contact: any) => {
-    if (user) {
-      const updatedContacts = [...(user.emergencyContacts || []), contact];
-      handleSaveProfile({ emergencyContacts: updatedContacts });
+  const handleAddEmergencyContact = async (contact: EmergencyContactType) => {
+    try {
+      if (user?.uid) {
+        await dispatch(addEmergencyContact({
+          userId: user.uid,
+          contact
+        })).unwrap();
+        Alert.alert('Success', 'Emergency contact added successfully!');
+      }
+    } catch (error) {
+      console.error('Add Contact Error:', error);
+      Alert.alert('Error', 'Failed to add emergency contact. Please try again.');
     }
   };
 
-  const handleRemoveEmergencyContact = (index: number) => {
-    if (user) {
-      const updatedContacts = user.emergencyContacts?.filter((_, i) => i !== index) || [];
-      handleSaveProfile({ emergencyContacts: updatedContacts });
+  const handleRemoveEmergencyContact = async (index: number) => {
+    try {
+      if (user?.uid) {
+        await dispatch(removeEmergencyContact({
+          userId: user.uid,
+          contactIndex: index
+        })).unwrap();
+        Alert.alert('Success', 'Emergency contact removed successfully!');
+      }
+    } catch (error) {
+      console.error('Remove Contact Error:', error);
+      Alert.alert('Error', 'Failed to remove emergency contact. Please try again.');
     }
   };
 
-  const handleUpdateEmergencyContact = (index: number, updatedContact: any) => {
-    if (user) {
-      const updatedContacts = user.emergencyContacts?.map((contact, i) => 
-        i === index ? updatedContact : contact
-      ) || [];
-      handleSaveProfile({ emergencyContacts: updatedContacts });
+  const handleUpdateEmergencyContact = async (index: number, updatedContact: EmergencyContactType) => {
+    try {
+      if (user?.uid) {
+        await dispatch(updateEmergencyContact({
+          userId: user.uid,
+          contactIndex: index,
+          contact: updatedContact
+        })).unwrap();
+        Alert.alert('Success', 'Emergency contact updated successfully!');
+      }
+    } catch (error) {
+      console.error('Update Contact Error:', error);
+      Alert.alert('Error', 'Failed to update emergency contact. Please try again.');
     }
   };
 
@@ -93,8 +133,13 @@ export default function ProfileScreen() {
             <Text style={styles.addButtonText}>+ Add Contact</Text>
           </TouchableOpacity>
         </View>
-        
-        {user.emergencyContacts && user.emergencyContacts.length > 0 ? (
+
+        {isLoading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#e74c3c" />
+            <Text style={styles.loadingText}>Loading contacts...</Text>
+          </View>
+        ) : user.emergencyContacts && user.emergencyContacts.length > 0 ? (
           <View style={styles.contactsList}>
             {user.emergencyContacts.map((contact, index) => (
               <View key={index} style={styles.contactItem}>
@@ -107,15 +152,27 @@ export default function ProfileScreen() {
                   <TouchableOpacity
                     style={styles.editButton}
                     onPress={() => {
-                      // Edit contact logic would go here
-                      Alert.alert('Edit Contact', 'Edit functionality coming soon!');
+                      setShowEmergencyContacts(true);
                     }}
                   >
                     <Text style={styles.editButtonText}>Edit</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={styles.deleteButton}
-                    onPress={() => handleRemoveEmergencyContact(index)}
+                    onPress={() => {
+                      Alert.alert(
+                        'Remove Contact',
+                        `Are you sure you want to remove ${contact.name}?`,
+                        [
+                          { text: 'Cancel', style: 'cancel' },
+                          {
+                            text: 'Remove',
+                            style: 'destructive',
+                            onPress: () => handleRemoveEmergencyContact(index)
+                          }
+                        ]
+                      );
+                    }}
                   >
                     <Text style={styles.deleteButtonText}>Delete</Text>
                   </TouchableOpacity>
@@ -138,22 +195,22 @@ export default function ProfileScreen() {
       {/* App Settings */}
       <View style={styles.settingsSection}>
         <Text style={styles.sectionTitle}>App Settings</Text>
-        
+
         <TouchableOpacity style={styles.settingItem}>
           <Text style={styles.settingLabel}>Notifications</Text>
           <Text style={styles.settingValue}>Enabled</Text>
         </TouchableOpacity>
-        
+
         <TouchableOpacity style={styles.settingItem}>
           <Text style={styles.settingLabel}>Location Services</Text>
           <Text style={styles.settingValue}>Enabled</Text>
         </TouchableOpacity>
-        
+
         <TouchableOpacity style={styles.settingItem}>
           <Text style={styles.settingLabel}>Shake Detection</Text>
           <Text style={styles.settingValue}>Enabled</Text>
         </TouchableOpacity>
-        
+
         <TouchableOpacity style={styles.settingItem}>
           <Text style={styles.settingLabel}>Auto SOS</Text>
           <Text style={styles.settingValue}>Disabled</Text>
@@ -163,17 +220,17 @@ export default function ProfileScreen() {
       {/* App Information */}
       <View style={styles.infoSection}>
         <Text style={styles.sectionTitle}>App Information</Text>
-        
+
         <View style={styles.infoItem}>
           <Text style={styles.infoLabel}>Version</Text>
           <Text style={styles.infoValue}>1.0.0</Text>
         </View>
-        
+
         <View style={styles.infoItem}>
           <Text style={styles.infoLabel}>Build</Text>
           <Text style={styles.infoValue}>2024.10.03</Text>
         </View>
-        
+
         <View style={styles.infoItem}>
           <Text style={styles.infoLabel}>Last Updated</Text>
           <Text style={styles.infoValue}>
@@ -183,15 +240,40 @@ export default function ProfileScreen() {
       </View>
 
       {/* Emergency Contacts Modal */}
-      {showEmergencyContacts && (
-        <EmergencyContacts
-          contacts={user.emergencyContacts || []}
-          isEditing={true}
-          onAdd={handleAddEmergencyContact}
-          onRemove={handleRemoveEmergencyContact}
-          onUpdate={handleUpdateEmergencyContact}
-        />
-      )}
+      <Modal
+        visible={showEmergencyContacts}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowEmergencyContacts(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalHeaderTitle}>Manage Emergency Contacts</Text>
+              <TouchableOpacity
+                onPress={() => setShowEmergencyContacts(false)}
+                style={styles.closeButton}
+              >
+                <Ionicons name="close" size={24} color="#2c3e50" />
+              </TouchableOpacity>
+            </View>
+            {isLoading ? (
+              <View style={styles.modalLoadingContainer}>
+                <ActivityIndicator size="large" color="#e74c3c" />
+                <Text style={styles.loadingText}>Processing...</Text>
+              </View>
+            ) : (
+              <EmergencyContacts
+                contacts={user.emergencyContacts || []}
+                isEditing={true}
+                onAdd={handleAddEmergencyContact}
+                onRemove={handleRemoveEmergencyContact}
+                onUpdate={handleUpdateEmergencyContact}
+              />
+            )}
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }
@@ -261,6 +343,15 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 12,
     fontWeight: 'bold',
+  },
+  loadingContainer: {
+    alignItems: 'center',
+    paddingVertical: 30,
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 14,
+    color: '#7f8c8d',
   },
   contactsList: {
     marginTop: 10,
@@ -393,5 +484,40 @@ const styles = StyleSheet.create({
     color: '#e74c3c',
     textAlign: 'center',
     marginTop: 50,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContainer: {
+    backgroundColor: '#f8f9fa',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: '90%',
+    paddingBottom: 20,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    backgroundColor: '#ffffff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#ecf0f1',
+  },
+  modalHeaderTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#2c3e50',
+  },
+  closeButton: {
+    padding: 4,
+  },
+  modalLoadingContainer: {
+    alignItems: 'center',
+    paddingVertical: 50,
   },
 });

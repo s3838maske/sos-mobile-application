@@ -1,12 +1,17 @@
 import { Ionicons } from '@expo/vector-icons';
-import React from 'react';
+import React, { useState } from 'react';
 import {
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Alert,
+  Linking,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
+import { useDispatch } from 'react-redux';
+import { updateSOSStatus } from '../../../redux/slices/sosSlice';
+import { AppDispatch } from '../../../redux/store';
 import { SOSEvent } from '../../../redux/types';
 
 interface SOSLogsTableProps {
@@ -15,12 +20,17 @@ interface SOSLogsTableProps {
 }
 
 export default function SOSLogsTable({ events, isLoading }: SOSLogsTableProps) {
+  const dispatch = useDispatch<AppDispatch>();
+  const [resolvingId, setResolvingId] = useState<string | null>(null);
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'active':
         return '#e74c3c';
       case 'resolved':
         return '#27ae60';
+      case 'false_alarm':
+        return '#f39c12';
       default:
         return '#7f8c8d';
     }
@@ -32,8 +42,68 @@ export default function SOSLogsTable({ events, isLoading }: SOSLogsTableProps) {
         return 'alert-circle';
       case 'resolved':
         return 'checkmark-circle';
+      case 'false_alarm':
+        return 'close-circle';
       default:
         return 'help-circle';
+    }
+  };
+
+  const handleViewOnMap = (event: SOSEvent) => {
+    if (!event.location) {
+      Alert.alert('Error', 'Location data not available for this event');
+      return;
+    }
+
+    const { latitude, longitude } = event.location;
+    const url = `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`;
+
+    Linking.canOpenURL(url).then(supported => {
+      if (supported) {
+        Linking.openURL(url);
+      } else {
+        Alert.alert('Error', 'Unable to open maps application');
+      }
+    }).catch(() => {
+      Alert.alert('Error', 'Failed to open maps application');
+    });
+  };
+
+  const handleResolveEvent = (event: SOSEvent) => {
+    Alert.alert(
+      'Resolve SOS Event',
+      `Are you sure you want to mark this SOS event as resolved?\n\nUser: ${event.userName || event.userId}\nTime: ${new Date(event.timestamp).toLocaleString()}`,
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel'
+        },
+        {
+          text: 'Mark as False Alarm',
+          style: 'destructive',
+          onPress: () => resolveEvent(event.id, 'false_alarm')
+        },
+        {
+          text: 'Resolve',
+          onPress: () => resolveEvent(event.id, 'resolved')
+        }
+      ]
+    );
+  };
+
+  const resolveEvent = async (eventId: string, status: 'resolved' | 'false_alarm') => {
+    try {
+      setResolvingId(eventId);
+      await dispatch(updateSOSStatus({ eventId, status })).unwrap();
+      Alert.alert(
+        'Success',
+        `SOS event has been marked as ${status === 'resolved' ? 'resolved' : 'false alarm'}`
+      );
+    } catch (error) {
+      console.error('Error resolving event:', error);
+      Alert.alert('Error', 'Failed to update event status. Please try again.');
+    } finally {
+      setResolvingId(null);
     }
   };
 
@@ -63,7 +133,11 @@ export default function SOSLogsTable({ events, isLoading }: SOSLogsTableProps) {
         <Text style={styles.headerTitle}>SOS Events ({events.length})</Text>
       </View>
 
-      <ScrollView style={styles.tableContainer} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.tableContainer}
+        nestedScrollEnabled={true}
+        showsVerticalScrollIndicator={true}
+      >
         {events.map((event, index) => (
           <View key={event.id} style={styles.eventCard}>
             <View style={styles.eventHeader}>
@@ -77,7 +151,7 @@ export default function SOSLogsTable({ events, isLoading }: SOSLogsTableProps) {
                   styles.statusText,
                   { color: getStatusColor(event.status) }
                 ]}>
-                  {event.status.toUpperCase()}
+                  {event.status.toUpperCase().replace('_', ' ')}
                 </Text>
               </View>
               <Text style={styles.timestamp}>
@@ -88,32 +162,46 @@ export default function SOSLogsTable({ events, isLoading }: SOSLogsTableProps) {
             <View style={styles.eventDetails}>
               <View style={styles.detailRow}>
                 <Ionicons name="person" size={16} color="#7f8c8d" />
-                <Text style={styles.detailLabel}>User ID:</Text>
-                <Text style={styles.detailValue}>{event.userId}</Text>
+                <Text style={styles.detailLabel}>User Name:</Text>
+                <Text style={styles.detailValue}>{event.userName || event.userId || 'Unknown'}</Text>
               </View>
 
               <View style={styles.detailRow}>
                 <Ionicons name="location" size={16} color="#7f8c8d" />
                 <Text style={styles.detailLabel}>Location:</Text>
-                <Text style={styles.detailValue}>{event.location}</Text>
+                <Text style={styles.detailValue} numberOfLines={2}>
+                  {event.address || (event.location
+                    ? `${event.location.latitude.toFixed(6)}, ${event.location.longitude.toFixed(6)}`
+                    : 'Location unavailable')}
+                </Text>
               </View>
 
               <View style={styles.messageContainer}>
                 <Text style={styles.messageLabel}>Message:</Text>
-                <Text style={styles.messageText}>{event.message}</Text>
+                <Text style={styles.messageText}>{event.message || 'No message'}</Text>
               </View>
             </View>
 
             <View style={styles.eventActions}>
-              <TouchableOpacity style={styles.actionButton}>
+              <TouchableOpacity
+                style={styles.actionButton}
+                onPress={() => handleViewOnMap(event)}
+                disabled={!event.location}
+              >
                 <Ionicons name="location" size={16} color="#3498db" />
                 <Text style={styles.actionText}>View on Map</Text>
               </TouchableOpacity>
 
               {event.status === 'active' && (
-                <TouchableOpacity style={[styles.actionButton, styles.resolveButton]}>
+                <TouchableOpacity
+                  style={[styles.actionButton, styles.resolveButton]}
+                  onPress={() => handleResolveEvent(event)}
+                  disabled={resolvingId === event.id}
+                >
                   <Ionicons name="checkmark" size={16} color="white" />
-                  <Text style={[styles.actionText, styles.resolveText]}>Resolve</Text>
+                  <Text style={[styles.actionText, styles.resolveText]}>
+                    {resolvingId === event.id ? 'Resolving...' : 'Resolve'}
+                  </Text>
                 </TouchableOpacity>
               )}
             </View>

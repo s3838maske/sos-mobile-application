@@ -1,13 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import {
-    Alert,
-    Modal,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Alert,
+  Modal,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { EmergencyContact } from '../../../redux/types';
 
@@ -28,10 +28,10 @@ export default function EmergencyContacts({
 }: EmergencyContactsProps) {
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
-  const [newContact, setNewContact] = useState({ name: '', phone: '' });
+  const [newContact, setNewContact] = useState({ name: '', phone: '', relation: '' });
 
   const handleAddContact = () => {
-    if (!newContact.name.trim() || !newContact.phone.trim()) {
+    if (!newContact.name.trim() || !newContact.phone.trim() || !newContact.relation.trim()) {
       Alert.alert('Error', 'Please fill in all fields');
       return;
     }
@@ -39,20 +39,21 @@ export default function EmergencyContacts({
     onAdd({
       name: newContact.name.trim(),
       phone: newContact.phone.trim(),
+      relation: newContact.relation.trim(),
     });
 
-    setNewContact({ name: '', phone: '' });
+    setNewContact({ name: '', phone: '', relation: '' });
     setShowAddModal(false);
   };
 
   const handleEditContact = (index: number, contact: EmergencyContact) => {
     setEditingIndex(index);
-    setNewContact({ name: contact.name, phone: contact.phone });
+    setNewContact({ name: contact.name, phone: contact.phone, relation: contact.relation });
     setShowAddModal(true);
   };
 
   const handleUpdateContact = () => {
-    if (!newContact.name.trim() || !newContact.phone.trim()) {
+    if (!newContact.name.trim() || !newContact.phone.trim() || !newContact.relation.trim()) {
       Alert.alert('Error', 'Please fill in all fields');
       return;
     }
@@ -61,10 +62,11 @@ export default function EmergencyContacts({
       onUpdate(editingIndex, {
         name: newContact.name.trim(),
         phone: newContact.phone.trim(),
+        relation: newContact.relation.trim(),
       });
     }
 
-    setNewContact({ name: '', phone: '' });
+    setNewContact({ name: '', phone: '', relation: '' });
     setEditingIndex(null);
     setShowAddModal(false);
   };
@@ -75,8 +77,8 @@ export default function EmergencyContacts({
       'Are you sure you want to remove this emergency contact?',
       [
         { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Remove', 
+        {
+          text: 'Remove',
           style: 'destructive',
           onPress: () => onRemove(index)
         }
@@ -120,8 +122,9 @@ export default function EmergencyContacts({
               <View style={styles.contactInfo}>
                 <Text style={styles.contactName}>{contact.name}</Text>
                 <Text style={styles.contactPhone}>{contact.phone}</Text>
+                <Text style={styles.contactRelation}>{contact.relation}</Text>
               </View>
-              
+
               <View style={styles.contactActions}>
                 <TouchableOpacity
                   style={styles.callButton}
@@ -129,7 +132,7 @@ export default function EmergencyContacts({
                 >
                   <Ionicons name="call" size={20} color="#27ae60" />
                 </TouchableOpacity>
-                
+
                 {isEditing && (
                   <>
                     <TouchableOpacity
@@ -138,7 +141,7 @@ export default function EmergencyContacts({
                     >
                       <Ionicons name="create" size={20} color="#3498db" />
                     </TouchableOpacity>
-                    
+
                     <TouchableOpacity
                       style={styles.removeButton}
                       onPress={() => handleRemoveContact(index)}
@@ -165,14 +168,14 @@ export default function EmergencyContacts({
             <Text style={styles.modalTitle}>
               {editingIndex !== null ? 'Edit Contact' : 'Add Emergency Contact'}
             </Text>
-            
+
             <TextInput
               style={styles.modalInput}
               placeholder="Contact Name"
               value={newContact.name}
               onChangeText={(text) => setNewContact({ ...newContact, name: text })}
             />
-            
+
             <TextInput
               style={styles.modalInput}
               placeholder="Phone Number"
@@ -180,19 +183,26 @@ export default function EmergencyContacts({
               onChangeText={(text) => setNewContact({ ...newContact, phone: text })}
               keyboardType="phone-pad"
             />
-            
+
+            <TextInput
+              style={styles.modalInput}
+              placeholder="Relation (e.g., Mother, Father, Friend)"
+              value={newContact.relation}
+              onChangeText={(text) => setNewContact({ ...newContact, relation: text })}
+            />
+
             <View style={styles.modalActions}>
               <TouchableOpacity
                 style={styles.modalCancelButton}
                 onPress={() => {
                   setShowAddModal(false);
                   setEditingIndex(null);
-                  setNewContact({ name: '', phone: '' });
+                  setNewContact({ name: '', phone: '', relation: '' });
                 }}
               >
                 <Text style={styles.modalCancelText}>Cancel</Text>
               </TouchableOpacity>
-              
+
               <TouchableOpacity
                 style={styles.modalSaveButton}
                 onPress={editingIndex !== null ? handleUpdateContact : handleAddContact}
@@ -280,6 +290,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#7f8c8d',
     marginTop: 2,
+  },
+  contactRelation: {
+    fontSize: 12,
+    color: '#95a5a6',
+    marginTop: 2,
+    fontStyle: 'italic',
   },
   contactActions: {
     flexDirection: 'row',
