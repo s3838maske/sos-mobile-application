@@ -1,14 +1,14 @@
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
-    Alert,
-    KeyboardAvoidingView,
-    Platform,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { signInUser } from '../../redux/slices/authSlice';
@@ -57,6 +57,7 @@ export default function LoginScreen() {
             keyboardType="email-address"
             autoCapitalize="none"
             autoCorrect={false}
+            editable={!isLoading}
           />
 
           <TextInput
@@ -66,6 +67,7 @@ export default function LoginScreen() {
             onChangeText={setPassword}
             secureTextEntry
             autoCapitalize="none"
+            editable={!isLoading}
           />
 
           <TouchableOpacity
@@ -132,6 +134,7 @@ const styles = StyleSheet.create({
     padding: 15,
     marginBottom: 15,
     fontSize: 16,
+    color: 'black',
   },
   button: {
     backgroundColor: '#e74c3c',
