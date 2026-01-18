@@ -1,34 +1,32 @@
 {
   "expo": {
-    "name": "Women Safety SOS App",
+    "name": "Women Safety SOS",
     "slug": "Sos-application",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/sos_logo.jpg",
-
+    "icon": "./assets/images/sos_logo.jpeg",
     "scheme": "sosapplication",
     "userInterfaceStyle": "light",
     "newArchEnabled": false,
-
+    "cli": {
+      "appVersionSource": "app"
+    },
     "ios": {
       "supportsTablet": true
     },
-
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/sos_logo.jpg",
+        "foregroundImage": "./assets/images/sos_logo.jpeg",
         "backgroundColor": "#E6F4FE"
       },
-      "edgeToEdgeEnabled": true,
+      "edgeToEdgeEnabled": false,
       "predictiveBackGestureEnabled": false,
       "package": "com.shubham3838.Sosapplication"
     },
-
     "web": {
       "output": "static",
       "favicon": "./assets/images/favicon.png"
     },
-
     "plugins": [
       "expo-router",
       [
@@ -45,12 +43,10 @@
       ],
       "expo-web-browser"
     ],
-
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
     },
-
     "extra": {
       "router": {},
       "eas": {
