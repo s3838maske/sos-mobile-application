@@ -1,27 +1,30 @@
-import { Ionicons } from '@expo/vector-icons';
-import React, { useRef } from 'react';
+import { Ionicons } from "@expo/vector-icons";
+import React, { useRef } from "react";
 import {
-    Animated,
-    Dimensions,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-} from 'react-native';
+  Animated,
+  Dimensions,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { COLORS, SHADOWS } from "../../../utils/theme";
 
 interface SOSButtonProps {
   onPress: () => void;
   isActive: boolean;
 }
 
-const { width } = Dimensions.get('window');
+const { width } = Dimensions.get("window");
 
 export default function SOSButton({ onPress, isActive }: SOSButtonProps) {
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
+  const ringAnim = useRef(new Animated.Value(1)).current;
 
   const handlePressIn = () => {
     Animated.spring(scaleAnim, {
-      toValue: 0.95,
+      toValue: 0.9,
       useNativeDriver: true,
     }).start();
   };
@@ -29,96 +32,144 @@ export default function SOSButton({ onPress, isActive }: SOSButtonProps) {
   const handlePressOut = () => {
     Animated.spring(scaleAnim, {
       toValue: 1,
+      friction: 3,
       useNativeDriver: true,
     }).start();
   };
 
   React.useEffect(() => {
     if (isActive) {
-      // Start pulsing animation when active
-      const pulse = Animated.loop(
-        Animated.sequence([
-          Animated.timing(pulseAnim, {
-            toValue: 1.2,
-            duration: 800,
-            useNativeDriver: true,
-          }),
-          Animated.timing(pulseAnim, {
-            toValue: 1,
-            duration: 800,
-            useNativeDriver: true,
-          }),
-        ])
-      );
-      pulse.start();
+      Animated.loop(
+        Animated.parallel([
+          Animated.sequence([
+            Animated.timing(pulseAnim, {
+              toValue: 1.15,
+              duration: 1000,
+              useNativeDriver: true,
+            }),
+            Animated.timing(pulseAnim, {
+              toValue: 1,
+              duration: 1000,
+              useNativeDriver: true,
+            }),
+          ]),
+          Animated.sequence([
+            Animated.timing(ringAnim, {
+              toValue: 1.5,
+              duration: 2000,
+              useNativeDriver: true,
+            }),
+            Animated.timing(ringAnim, {
+              toValue: 1,
+              duration: 0,
+              useNativeDriver: true,
+            }),
+          ]),
+        ]),
+      ).start();
     } else {
       pulseAnim.setValue(1);
+      ringAnim.setValue(1);
     }
   }, [isActive]);
 
   return (
-    <Animated.View
-      style={[
-        styles.container,
-        {
-          transform: [
-            { scale: scaleAnim },
-            { scale: pulseAnim },
-          ],
-        },
-      ]}
-    >
-      <TouchableOpacity
-        style={[
-          styles.button,
-          isActive && styles.buttonActive,
-        ]}
-        onPress={onPress}
-        onPressIn={handlePressIn}
-        onPressOut={handlePressOut}
-        activeOpacity={0.8}
-      >
-        <Ionicons
-          name="warning"
-          size={60}
-          color="white"
+    <View style={styles.container}>
+      {isActive && (
+        <Animated.View
+          style={[
+            styles.ring,
+            {
+              transform: [{ scale: ringAnim }],
+              opacity: Animated.divide(2, ringAnim).interpolate({
+                inputRange: [1.3, 2],
+                outputRange: [0.5, 0],
+              }),
+            },
+          ]}
         />
-        <Text style={styles.buttonText}>SOS</Text>
-      </TouchableOpacity>
-    </Animated.View>
+      )}
+
+      <Animated.View
+        style={[
+          styles.outerCircle,
+          {
+            transform: [{ scale: scaleAnim }, { scale: pulseAnim }],
+          },
+          isActive && styles.outerCircleActive,
+        ]}
+      >
+        <TouchableOpacity
+          style={[styles.innerCircle, isActive && styles.innerCircleActive]}
+          onPress={onPress}
+          onPressIn={handlePressIn}
+          onPressOut={handlePressOut}
+          activeOpacity={0.9}
+        >
+          <View style={styles.iconContainer}>
+            <Ionicons
+              name={isActive ? "shield-checkmark" : "warning"}
+              size={50}
+              color="white"
+            />
+          </View>
+          <Text style={styles.buttonText}>{isActive ? "STOP" : "SOS"}</Text>
+        </TouchableOpacity>
+      </Animated.View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
+    width: width * 0.6,
+    height: width * 0.6,
   },
-  button: {
-    width: width * 0.4,
-    height: width * 0.4,
-    borderRadius: width * 0.2,
-    backgroundColor: '#e74c3c',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 4.65,
-    elevation: 8,
+  ring: {
+    position: "absolute",
+    width: width * 0.45,
+    height: width * 0.45,
+    borderRadius: (width * 0.45) / 2,
+    borderWidth: 4,
+    borderColor: COLORS.primary,
+    opacity: 0.3,
   },
-  buttonActive: {
-    backgroundColor: '#c0392b',
-    shadowColor: '#e74c3c',
-    shadowOpacity: 0.6,
+  outerCircle: {
+    width: width * 0.45,
+    height: width * 0.45,
+    borderRadius: (width * 0.45) / 2,
+    backgroundColor: COLORS.primary + "20", // Transparent red
+    alignItems: "center",
+    justifyContent: "center",
+    ...SHADOWS.heavy,
+  },
+  outerCircleActive: {
+    backgroundColor: COLORS.success + "20",
+    shadowColor: COLORS.success,
+  },
+  innerCircle: {
+    width: width * 0.38,
+    height: width * 0.38,
+    borderRadius: (width * 0.38) / 2,
+    backgroundColor: COLORS.primary,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 6,
+    borderColor: "rgba(255,255,255,0.2)",
+  },
+  innerCircleActive: {
+    backgroundColor: COLORS.success,
+    borderColor: "rgba(255,255,255,0.3)",
+  },
+  iconContainer: {
+    marginBottom: 5,
   },
   buttonText: {
-    color: 'white',
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginTop: 5,
+    color: "white",
+    fontSize: 28,
+    fontWeight: "900",
+    letterSpacing: 2,
   },
 });

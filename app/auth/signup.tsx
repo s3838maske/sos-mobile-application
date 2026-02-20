@@ -1,204 +1,321 @@
-import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+import React, { useState } from "react";
 import {
-    Alert,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
-} from 'react-native';
-import { useDispatch, useSelector } from 'react-redux';
-import { signUpUser } from '../../redux/slices/authSlice';
-import { AppDispatch, RootState } from '../../redux/store';
+  ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  SafeAreaView,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { useDispatch, useSelector } from "react-redux";
+import { signUpUser } from "../../redux/slices/authSlice";
+import { AppDispatch, RootState } from "../../redux/store";
+import { COLORS, SHADOWS, SIZES } from "../../utils/theme";
 
 export default function SignupScreen() {
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+
   const dispatch = useDispatch<AppDispatch>();
   const router = useRouter();
   const { isLoading, error } = useSelector((state: RootState) => state.auth);
 
   const handleSignup = async () => {
     if (!name || !email || !phone || !password || !confirmPassword) {
-      Alert.alert('Error', 'Please fill in all fields');
+      Alert.alert("Error", "Please fill in all fields");
       return;
     }
 
     if (password !== confirmPassword) {
-      Alert.alert('Error', 'Passwords do not match');
+      Alert.alert("Error", "Passwords do not match");
       return;
     }
 
     if (password.length < 6) {
-      Alert.alert('Error', 'Password must be at least 6 characters');
+      Alert.alert("Error", "Password must be at least 6 characters");
       return;
     }
 
     try {
       await dispatch(signUpUser({ name, email, phone, password })).unwrap();
-      router.replace('/home');
+      router.replace("/(tabs)/home" as any);
     } catch (err) {
-      Alert.alert('Signup Failed', error || 'An error occurred');
+      Alert.alert("Signup Failed", error || "An error occurred");
     }
   };
 
   const navigateToLogin = () => {
-    router.push('/auth/login');
+    router.push("/auth/login");
   };
 
   return (
-    <KeyboardAvoidingView 
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <View style={styles.content}>
-          <Text style={styles.title}>Women Safety App</Text>
-          <Text style={styles.subtitle}>Create Account</Text>
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="dark-content" />
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+      >
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.header}>
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={navigateToLogin}
+            >
+              <Ionicons name="arrow-back" size={24} color={COLORS.text} />
+            </TouchableOpacity>
+            <Text style={styles.title}>Join SOS Guard</Text>
+            <Text style={styles.subtitle}>Your Safety Journey Starts Here</Text>
+          </View>
 
           <View style={styles.form}>
-            <TextInput
-              style={styles.input}
-              placeholder="Full Name"
-              value={name}
-              onChangeText={setName}
-              autoCapitalize="words"
-            />
+            <View style={styles.inputContainer}>
+              <Ionicons
+                name="person-outline"
+                size={20}
+                color={COLORS.textLight}
+                style={styles.inputIcon}
+              />
+              <TextInput
+                style={styles.input}
+                placeholder="Full Name"
+                placeholderTextColor={COLORS.textLight}
+                value={name}
+                onChangeText={setName}
+                autoCapitalize="words"
+                editable={!isLoading}
+              />
+            </View>
 
-            <TextInput
-              style={styles.input}
-              placeholder="Email"
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
+            <View style={styles.inputContainer}>
+              <Ionicons
+                name="mail-outline"
+                size={20}
+                color={COLORS.textLight}
+                style={styles.inputIcon}
+              />
+              <TextInput
+                style={styles.input}
+                placeholder="Email Address"
+                placeholderTextColor={COLORS.textLight}
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+                editable={!isLoading}
+              />
+            </View>
 
-            <TextInput
-              style={styles.input}
-              placeholder="Phone Number"
-              value={phone}
-              onChangeText={setPhone}
-              keyboardType="phone-pad"
-            />
+            <View style={styles.inputContainer}>
+              <Ionicons
+                name="call-outline"
+                size={20}
+                color={COLORS.textLight}
+                style={styles.inputIcon}
+              />
+              <TextInput
+                style={styles.input}
+                placeholder="Phone Number"
+                placeholderTextColor={COLORS.textLight}
+                value={phone}
+                onChangeText={setPhone}
+                keyboardType="phone-pad"
+                editable={!isLoading}
+              />
+            </View>
 
-            <TextInput
-              style={styles.input}
-              placeholder="Password"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-              autoCapitalize="none"
-            />
+            <View style={styles.inputContainer}>
+              <Ionicons
+                name="lock-closed-outline"
+                size={20}
+                color={COLORS.textLight}
+                style={styles.inputIcon}
+              />
+              <TextInput
+                style={styles.input}
+                placeholder="Password"
+                placeholderTextColor={COLORS.textLight}
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={!showPassword}
+                autoCapitalize="none"
+                editable={!isLoading}
+              />
+              <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+                <Ionicons
+                  name={showPassword ? "eye-off-outline" : "eye-outline"}
+                  size={20}
+                  color={COLORS.textLight}
+                />
+              </TouchableOpacity>
+            </View>
 
-            <TextInput
-              style={styles.input}
-              placeholder="Confirm Password"
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-              secureTextEntry
-              autoCapitalize="none"
-            />
+            <View style={styles.inputContainer}>
+              <Ionicons
+                name="lock-closed-outline"
+                size={20}
+                color={COLORS.textLight}
+                style={styles.inputIcon}
+              />
+              <TextInput
+                style={styles.input}
+                placeholder="Confirm Password"
+                placeholderTextColor={COLORS.textLight}
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+                secureTextEntry={!showPassword}
+                autoCapitalize="none"
+                editable={!isLoading}
+              />
+            </View>
+
+            <View style={styles.termsContainer}>
+              <Text style={styles.termsText}>
+                By signing up, you agree to our{" "}
+                <Text style={styles.termsLink}>Terms of Service</Text> and{" "}
+                <Text style={styles.termsLink}>Privacy Policy</Text>
+              </Text>
+            </View>
 
             <TouchableOpacity
               style={[styles.button, isLoading && styles.buttonDisabled]}
               onPress={handleSignup}
               disabled={isLoading}
             >
-              <Text style={styles.buttonText}>
-                {isLoading ? 'Creating Account...' : 'Create Account'}
-              </Text>
+              {isLoading ? (
+                <ActivityIndicator color={COLORS.white} />
+              ) : (
+                <Text style={styles.buttonText}>Create Account</Text>
+              )}
             </TouchableOpacity>
 
-            <TouchableOpacity onPress={navigateToLogin} style={styles.linkButton}>
-              <Text style={styles.linkText}>
-                Already have an account? Sign In
-              </Text>
-            </TouchableOpacity>
+            <View style={styles.footer}>
+              <Text style={styles.footerText}>Already have an account? </Text>
+              <TouchableOpacity onPress={navigateToLogin}>
+                <Text style={styles.linkText}>Sign In</Text>
+              </TouchableOpacity>
+            </View>
           </View>
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    marginTop: 30,
+    backgroundColor: COLORS.background,
   },
   scrollContent: {
     flexGrow: 1,
+    paddingHorizontal: 25,
+    paddingBottom: 40,
   },
-  content: {
-    flex: 1,
-    justifyContent: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 40,
+  header: {
+    marginTop: 20,
+    marginBottom: 30,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: COLORS.white,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 20,
+    ...SHADOWS.light,
   },
   title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#e74c3c',
-    textAlign: 'center',
-    marginBottom: 10,
+    fontSize: SIZES.h1,
+    fontWeight: "800",
+    color: COLORS.text,
   },
   subtitle: {
-    fontSize: 24,
-    color: '#2c3e50',
-    textAlign: 'center',
-    marginBottom: 40,
+    fontSize: SIZES.body,
+    color: COLORS.textLight,
+    marginTop: 5,
   },
   form: {
-    backgroundColor: 'white',
-    padding: 20,
-    borderRadius: 10,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
+    width: "100%",
+  },
+  inputContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: COLORS.white,
+    borderRadius: SIZES.radius,
+    paddingHorizontal: 15,
+    marginBottom: 15,
+    borderWidth: 1,
+    borderColor: COLORS.lightGrey,
+    ...SHADOWS.light,
+  },
+  inputIcon: {
+    marginRight: 10,
   },
   input: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    padding: 15,
-    marginBottom: 15,
-    fontSize: 16,
+    flex: 1,
+    paddingVertical: 15,
+    fontSize: SIZES.body,
+    color: COLORS.text,
+  },
+  termsContainer: {
+    marginBottom: 25,
+    paddingHorizontal: 5,
+  },
+  termsText: {
+    fontSize: SIZES.small,
+    color: COLORS.textLight,
+    lineHeight: 20,
+  },
+  termsLink: {
+    color: COLORS.primary,
+    fontWeight: "600",
   },
   button: {
-    backgroundColor: '#e74c3c',
-    padding: 15,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginBottom: 15,
+    backgroundColor: COLORS.primary,
+    paddingVertical: 15,
+    borderRadius: SIZES.radius,
+    alignItems: "center",
+    justifyContent: "center",
+    ...SHADOWS.medium,
   },
   buttonDisabled: {
-    backgroundColor: '#bdc3c7',
+    backgroundColor: COLORS.grey,
   },
   buttonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: 'bold',
+    color: COLORS.white,
+    fontSize: SIZES.h3,
+    fontWeight: "bold",
   },
-  linkButton: {
-    alignItems: 'center',
+  footer: {
+    flexDirection: "row",
+    justifyContent: "center",
+    marginTop: 30,
+  },
+  footerText: {
+    color: COLORS.textLight,
+    fontSize: SIZES.body,
   },
   linkText: {
-    color: '#3498db',
-    fontSize: 16,
+    color: COLORS.primary,
+    fontSize: SIZES.body,
+    fontWeight: "bold",
   },
 });

@@ -1,82 +1,100 @@
-import { Ionicons } from '@expo/vector-icons';
-import { Tabs } from 'expo-router';
-import React from 'react';
-import { useSelector } from 'react-redux';
-import { RootState } from '../../redux/store';
+import { Ionicons } from "@expo/vector-icons";
+import { Tabs } from "expo-router";
+import React from "react";
+import { StyleSheet, View } from "react-native";
+import { useSelector } from "react-redux";
+import { RootState } from "../../redux/store";
+import { isAdminUser } from "../../services/authService";
 
 export default function TabLayout() {
   const { user } = useSelector((state: RootState) => state.auth);
-  const isAdmin = user?.email === 'admin@safetyapp.com';
+  const isAdmin = user ? isAdminUser(user.email) : false;
 
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: '#e74c3c',
-        tabBarInactiveTintColor: '#7f8c8d',
+        tabBarActiveTintColor: "#e74c3c",
+        tabBarInactiveTintColor: "#7f8c8d",
+        headerShown: false,
+        tabBarShowLabel: false,
         tabBarStyle: {
-          backgroundColor: '#ffffff',
-          borderTopWidth: 1,
-          borderTopColor: '#e1e8ed',
-          paddingBottom: 5,
+          // backgroundColor: "#ffffff",
+          // borderTopWidth: 1,
+          // borderTopColor: "#e1e8ed",
+          paddingBottom: 0,
           paddingTop: 5,
           height: 60,
-        },
-        headerStyle: {
-          backgroundColor: '#e74c3c',
-        },
-        headerTintColor: '#ffffff',
-        headerTitleStyle: {
-          fontWeight: 'bold',
         },
       }}
     >
       <Tabs.Screen
         name="home"
         options={{
-          title: 'Home',
+          href: isAdmin ? null : "/home",
+          title: "Home",
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="home" size={size} color={color} />
+            <View style={styles.tabBarIcon}>
+              <Ionicons name="home" size={size} color={color} />
+            </View>
           ),
         }}
       />
       <Tabs.Screen
         name="tracking"
         options={{
-          title: 'Tracking',
+          href: isAdmin ? null : "/tracking",
+          title: "Tracking",
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="location" size={size} color={color} />
+            <View style={styles.tabBarIcon}>
+              <Ionicons name="location" size={size} color={color} />
+            </View>
           ),
         }}
       />
       <Tabs.Screen
         name="emergency"
         options={{
-          title: 'Emergency',
+          href: isAdmin ? null : "/emergency",
+          title: "Emergency",
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="call" size={size} color={color} />
+            <View style={styles.tabBarIcon}>
+              <Ionicons name="call" size={size} color={color} />
+            </View>
           ),
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
-          title: 'Profile',
+          title: "Profile",
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="person" size={size} color={color} />
+            <View style={styles.tabBarIcon}>
+              <Ionicons name="person" size={size} color={color} />
+            </View>
           ),
         }}
       />
-      {isAdmin && (
-        <Tabs.Screen
-          name="admin"
-          options={{
-            title: 'Admin',
-            tabBarIcon: ({ color, size }) => (
+      <Tabs.Screen
+        name="admin"
+        options={{
+          href: isAdmin ? "/admin" : null,
+          title: "Admin",
+          tabBarIcon: ({ color, size }) => (
+            <View style={styles.tabBarIcon}>
               <Ionicons name="shield" size={size} color={color} />
-            ),
-          }}
-        />
-      )}
+            </View>
+          ),
+        }}
+      />
     </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  tabBarIcon: {
+    backgroundColor: "#ffffff",
+    display: "flex",
+    alignItems: "flex-end",
+    justifyContent: "center",
+  },
+});

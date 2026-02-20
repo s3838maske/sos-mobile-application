@@ -1,56 +1,103 @@
-import { Ionicons } from '@expo/vector-icons';
-import React from 'react';
+import { Ionicons } from "@expo/vector-icons";
+import React from "react";
 import {
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
-} from 'react-native';
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { COLORS, SHADOWS, SIZES } from "../../../utils/theme";
 
 interface LocationPermissionProps {
   onRequestPermission: () => void;
 }
 
-export default function LocationPermission({ onRequestPermission }: LocationPermissionProps) {
+export default function LocationPermission({
+  onRequestPermission,
+}: LocationPermissionProps) {
   return (
     <View style={styles.container}>
-      <View style={styles.iconContainer}>
-        <Ionicons name="location-outline" size={80} color="#bdc3c7" />
+      <StatusBar barStyle="light-content" />
+      <View style={styles.header}>
+        <Ionicons name="location" size={40} color={COLORS.white} />
+        <Text style={styles.title}>Location Required</Text>
+        <Text style={styles.subtitle}>Help us keep you safe</Text>
       </View>
-      
-      <Text style={styles.title}>Location Permission Required</Text>
-      <Text style={styles.description}>
-        To enable location tracking and emergency features, we need access to your location.
-      </Text>
-      
-      <View style={styles.featuresList}>
-        <View style={styles.featureItem}>
-          <Ionicons name="checkmark-circle" size={20} color="#27ae60" />
-          <Text style={styles.featureText}>Share your location during emergencies</Text>
-        </View>
-        
-        <View style={styles.featureItem}>
-          <Ionicons name="checkmark-circle" size={20} color="#27ae60" />
-          <Text style={styles.featureText}>Track your movement for safety</Text>
-        </View>
-        
-        <View style={styles.featureItem}>
-          <Ionicons name="checkmark-circle" size={20} color="#27ae60" />
-          <Text style={styles.featureText}>Find nearby help centers</Text>
-        </View>
-      </View>
-      
-      <TouchableOpacity
-        style={styles.permissionButton}
-        onPress={onRequestPermission}
+
+      <ScrollView
+        style={styles.content}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 40 }}
       >
-        <Ionicons name="location" size={20} color="white" />
-        <Text style={styles.permissionButtonText}>Grant Location Permission</Text>
-      </TouchableOpacity>
-      
-      <Text style={styles.privacyNote}>
-        Your location data is encrypted and only used for safety purposes.
-      </Text>
+        <View style={styles.infoCard}>
+          <View style={styles.iconCircle}>
+            <Ionicons
+              name="shield-checkmark"
+              size={50}
+              color={COLORS.primary}
+            />
+          </View>
+          <Text style={styles.cardTitle}>Why we need this?</Text>
+          <Text style={styles.description}>
+            SOS Guard uses your location to provide critical safety features
+            during emergencies.
+          </Text>
+
+          <View style={styles.featureList}>
+            <View style={styles.featureItem}>
+              <View style={styles.featureIcon}>
+                <Ionicons name="flash" size={20} color={COLORS.success} />
+              </View>
+              <View style={styles.featureInfo}>
+                <Text style={styles.featureTitle}>Instant SOS</Text>
+                <Text style={styles.featureDesc}>
+                  Sends your exact coordinates to responders.
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.featureItem}>
+              <View style={styles.featureIcon}>
+                <Ionicons name="walk" size={20} color={COLORS.accent} />
+              </View>
+              <View style={styles.featureInfo}>
+                <Text style={styles.featureTitle}>Live Journey</Text>
+                <Text style={styles.featureDesc}>
+                  Let loved ones track your way home.
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.featureItem}>
+              <View style={styles.featureIcon}>
+                <Ionicons name="medkit" size={20} color={COLORS.warning} />
+              </View>
+              <View style={styles.featureInfo}>
+                <Text style={styles.featureTitle}>Nearby Help</Text>
+                <Text style={styles.featureDesc}>
+                  Locate the nearest police or hospitals.
+                </Text>
+              </View>
+            </View>
+          </View>
+        </View>
+
+        <TouchableOpacity
+          style={styles.grantButton}
+          onPress={onRequestPermission}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.grantButtonText}>Grant Permission</Text>
+          <Ionicons name="arrow-forward" size={20} color={COLORS.white} />
+        </TouchableOpacity>
+
+        <Text style={styles.privacyNote}>
+          Your location data is end-to-end encrypted and never shared with third
+          parties.
+        </Text>
+      </ScrollView>
     </View>
   );
 }
@@ -58,61 +105,116 @@ export default function LocationPermission({ onRequestPermission }: LocationPerm
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 30,
+    backgroundColor: COLORS.background,
   },
-  iconContainer: {
-    marginBottom: 30,
+  header: {
+    backgroundColor: COLORS.primary,
+    paddingTop: 80,
+    paddingBottom: 40,
+    paddingHorizontal: 30,
+    borderBottomLeftRadius: 35,
+    borderBottomRightRadius: 35,
+    alignItems: "center",
+    ...SHADOWS.medium,
   },
   title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#2c3e50',
-    textAlign: 'center',
-    marginBottom: 15,
+    fontSize: 26,
+    fontWeight: "800",
+    color: COLORS.white,
+    marginTop: 15,
   },
-  description: {
-    fontSize: 16,
-    color: '#7f8c8d',
-    textAlign: 'center',
-    lineHeight: 24,
-    marginBottom: 30,
+  subtitle: {
+    fontSize: SIZES.body,
+    color: COLORS.white,
+    opacity: 0.8,
+    marginTop: 5,
   },
-  featuresList: {
-    width: '100%',
-    marginBottom: 40,
-  },
-  featureItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 15,
-  },
-  featureText: {
-    fontSize: 16,
-    color: '#2c3e50',
-    marginLeft: 15,
+  content: {
     flex: 1,
+    paddingHorizontal: 25,
+    marginTop: -30,
   },
-  permissionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#e74c3c',
-    paddingHorizontal: 30,
-    paddingVertical: 15,
-    borderRadius: 25,
+  infoCard: {
+    backgroundColor: COLORS.white,
+    borderRadius: 30,
+    padding: 25,
+    alignItems: "center",
+    ...SHADOWS.heavy,
+  },
+  iconCircle: {
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    backgroundColor: COLORS.primary + "10",
+    justifyContent: "center",
+    alignItems: "center",
     marginBottom: 20,
   },
-  permissionButtonText: {
-    color: 'white',
+  cardTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: COLORS.text,
+    marginBottom: 10,
+  },
+  description: {
+    fontSize: 15,
+    color: COLORS.textLight,
+    textAlign: "center",
+    lineHeight: 22,
+    marginBottom: 30,
+  },
+  featureList: {
+    width: "100%",
+  },
+  featureItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  featureIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: COLORS.background,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 15,
+  },
+  featureInfo: {
+    flex: 1,
+  },
+  featureTitle: {
     fontSize: 16,
-    fontWeight: '600',
-    marginLeft: 10,
+    fontWeight: "700",
+    color: COLORS.text,
+  },
+  featureDesc: {
+    fontSize: 13,
+    color: COLORS.textLight,
+    marginTop: 2,
+  },
+  grantButton: {
+    backgroundColor: COLORS.secondary,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 18,
+    borderRadius: 20,
+    marginTop: 30,
+    ...SHADOWS.medium,
+  },
+  grantButtonText: {
+    color: COLORS.white,
+    fontSize: 18,
+    fontWeight: "bold",
+    marginRight: 10,
   },
   privacyNote: {
     fontSize: 12,
-    color: '#95a5a6',
-    textAlign: 'center',
+    color: COLORS.textLight,
+    textAlign: "center",
+    marginTop: 20,
     lineHeight: 18,
+    paddingHorizontal: 20,
   },
 });

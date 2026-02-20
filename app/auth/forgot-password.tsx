@@ -15,34 +15,32 @@ import {
   View,
 } from "react-native";
 import { useDispatch, useSelector } from "react-redux";
-import { signInUser } from "../../redux/slices/authSlice";
+import { resetPassword } from "../../redux/slices/authSlice";
 import { AppDispatch, RootState } from "../../redux/store";
 import { COLORS, SHADOWS, SIZES } from "../../utils/theme";
 
-export default function LoginScreen() {
+export default function ForgotPasswordScreen() {
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
   const dispatch = useDispatch<AppDispatch>();
   const router = useRouter();
-  const { isLoading, error } = useSelector((state: RootState) => state.auth);
+  const { isLoading } = useSelector((state: RootState) => state.auth);
 
-  const handleLogin = async () => {
-    if (!email || !password) {
-      Alert.alert("Error", "Please fill in all fields");
+  const handleResetPassword = async () => {
+    if (!email) {
+      Alert.alert("Error", "Please enter your email address");
       return;
     }
 
     try {
-      await dispatch(signInUser({ email, password })).unwrap();
-      router.replace("/(tabs)/home" as any);
-    } catch (err) {
-      Alert.alert("Login Failed", error || "An error occurred");
+      await dispatch(resetPassword(email)).unwrap();
+      Alert.alert(
+        "Success",
+        "A password reset link has been sent to your email address.",
+        [{ text: "OK", onPress: () => router.back() }],
+      );
+    } catch (err: any) {
+      Alert.alert("Error", err.message || "Failed to send reset email");
     }
-  };
-
-  const navigateToSignup = () => {
-    router.push("/auth/signup");
   };
 
   return (
@@ -53,16 +51,26 @@ export default function LoginScreen() {
         behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
         <View style={styles.content}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => router.back()}
+          >
+            <Ionicons name="arrow-back" size={24} color={COLORS.text} />
+          </TouchableOpacity>
+
           <View style={styles.header}>
-            <View style={styles.logoContainer}>
+            <View style={styles.iconContainer}>
               <Ionicons
-                name="shield-checkmark"
+                name="lock-open-outline"
                 size={60}
                 color={COLORS.primary}
               />
             </View>
-            <Text style={styles.title}>SOS Guard</Text>
-            <Text style={styles.subtitle}>Secure Access to Your Safety</Text>
+            <Text style={styles.title}>Forgot Password?</Text>
+            <Text style={styles.subtitle}>
+              Enter your email address and we'll send you a link to reset your
+              password.
+            </Text>
           </View>
 
           <View style={styles.form}>
@@ -86,57 +94,17 @@ export default function LoginScreen() {
               />
             </View>
 
-            <View style={styles.inputContainer}>
-              <Ionicons
-                name="lock-closed-outline"
-                size={20}
-                color={COLORS.textLight}
-                style={styles.inputIcon}
-              />
-              <TextInput
-                style={styles.input}
-                placeholder="Password"
-                placeholderTextColor={COLORS.textLight}
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry={!showPassword}
-                autoCapitalize="none"
-                editable={!isLoading}
-              />
-              <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-                <Ionicons
-                  name={showPassword ? "eye-off-outline" : "eye-outline"}
-                  size={20}
-                  color={COLORS.textLight}
-                />
-              </TouchableOpacity>
-            </View>
-
-            <TouchableOpacity
-              style={styles.forgotPassword}
-              onPress={() => router.push("/auth/forgot-password")}
-            >
-              <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
-            </TouchableOpacity>
-
             <TouchableOpacity
               style={[styles.button, isLoading && styles.buttonDisabled]}
-              onPress={handleLogin}
+              onPress={handleResetPassword}
               disabled={isLoading}
             >
               {isLoading ? (
                 <ActivityIndicator color={COLORS.white} />
               ) : (
-                <Text style={styles.buttonText}>Sign In</Text>
+                <Text style={styles.buttonText}>Send Reset Link</Text>
               )}
             </TouchableOpacity>
-
-            <View style={styles.footer}>
-              <Text style={styles.footerText}>Don't have an account? </Text>
-              <TouchableOpacity onPress={navigateToSignup}>
-                <Text style={styles.linkText}>Sign Up</Text>
-              </TouchableOpacity>
-            </View>
           </View>
         </View>
       </KeyboardAvoidingView>
@@ -148,17 +116,28 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
+    marginTop: 30,
   },
   content: {
     flex: 1,
-    justifyContent: "center",
     paddingHorizontal: 25,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: COLORS.white,
+    justifyContent: "center",
+    alignItems: "center",
+    marginTop: 20,
+    marginBottom: 20,
+    ...SHADOWS.light,
   },
   header: {
     alignItems: "center",
     marginBottom: 40,
   },
-  logoContainer: {
+  iconContainer: {
     width: 100,
     height: 100,
     backgroundColor: COLORS.white,
@@ -178,7 +157,8 @@ const styles = StyleSheet.create({
     fontSize: SIZES.body,
     color: COLORS.textLight,
     textAlign: "center",
-    marginTop: 5,
+    marginTop: 10,
+    lineHeight: 22,
   },
   form: {
     width: "100%",
@@ -189,7 +169,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.white,
     borderRadius: SIZES.radius,
     paddingHorizontal: 15,
-    marginBottom: 15,
+    marginBottom: 25,
     borderWidth: 1,
     borderColor: COLORS.lightGrey,
     ...SHADOWS.light,
@@ -202,15 +182,6 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     fontSize: SIZES.body,
     color: COLORS.text,
-  },
-  forgotPassword: {
-    alignSelf: "flex-end",
-    marginBottom: 25,
-  },
-  forgotPasswordText: {
-    color: COLORS.primary,
-    fontWeight: "600",
-    fontSize: SIZES.small,
   },
   button: {
     backgroundColor: COLORS.primary,
@@ -226,20 +197,6 @@ const styles = StyleSheet.create({
   buttonText: {
     color: COLORS.white,
     fontSize: SIZES.h3,
-    fontWeight: "bold",
-  },
-  footer: {
-    flexDirection: "row",
-    justifyContent: "center",
-    marginTop: 30,
-  },
-  footerText: {
-    color: COLORS.textLight,
-    fontSize: SIZES.body,
-  },
-  linkText: {
-    color: COLORS.primary,
-    fontSize: SIZES.body,
     fontWeight: "bold",
   },
 });

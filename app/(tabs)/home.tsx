@@ -1,4 +1,4 @@
-import { router } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 import { Accelerometer } from "expo-sensors";
 import * as SMS from "expo-sms";
 import React, { useEffect, useRef, useState } from "react";
@@ -6,6 +6,7 @@ import {
   ActivityIndicator,
   Alert,
   ScrollView,
+  StatusBar,
   StyleSheet,
   Switch,
   Text,
@@ -13,7 +14,6 @@ import {
   View,
 } from "react-native";
 import { useDispatch, useSelector } from "react-redux";
-import { signOutUser } from "../../redux/slices/authSlice";
 import {
   getCurrentLocation,
   setLocation,
@@ -23,7 +23,8 @@ import {
 import { logSOSEvent, updateSOSStatus } from "../../redux/slices/sosSlice";
 import { AppDispatch, RootState } from "../../redux/store";
 import { startLocationTracking as startLocationService } from "../../services/locationService";
-import { getAddressFromCoordinates } from "../../utils/geocoding";
+import { saveSOSLogOffline } from "../../services/sqliteService";
+import { COLORS, SHADOWS, SIZES } from "../../utils/theme";
 import LiveLocationMap from "../home/components/LiveLocationMap";
 import NearbyHelpCenters from "../home/components/NearbyHelpCenters";
 import SOSButton from "../home/components/SOSButton";
@@ -32,7 +33,7 @@ export default function HomeScreen() {
   const dispatch = useDispatch<AppDispatch>();
   const { user } = useSelector((state: RootState) => state.auth);
   const { currentLocation, isTracking } = useSelector(
-    (state: RootState) => state.location
+    (state: RootState) => state.location,
   );
   const { isActive, events } = useSelector((state: RootState) => state.sos);
 
@@ -42,18 +43,7 @@ export default function HomeScreen() {
   const locationSubscriptionRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
-    // Request location permission and get current location
     dispatch(getCurrentLocation());
-  }, []);
-
-  // Cleanup location subscription on unmount
-  useEffect(() => {
-    return () => {
-      if (locationSubscriptionRef.current) {
-        locationSubscriptionRef.current();
-        locationSubscriptionRef.current = null;
-      }
-    };
   }, []);
 
   useEffect(() => {
@@ -61,13 +51,10 @@ export default function HomeScreen() {
       const sub = Accelerometer.addListener((accelerometerData) => {
         const { x, y, z } = accelerometerData;
         const acceleration = Math.sqrt(x * x + y * y + z * z);
-
-        // Simple shake detection (threshold can be adjusted)
         if (acceleration > 2.5) {
           handleSOSPress();
         }
       });
-
       Accelerometer.setUpdateInterval(100);
       setSubscription(sub);
     } else {
@@ -76,11 +63,8 @@ export default function HomeScreen() {
         setSubscription(null);
       }
     }
-
     return () => {
-      if (subscription) {
-        subscription.remove();
-      }
+      if (subscription) subscription.remove();
     };
   }, [shakeEnabled]);
 
@@ -88,399 +72,333 @@ export default function HomeScreen() {
     try {
       setSosLoading(true);
 
-      // If already active, resolve the current active event instead of creating a new one
       if (isActive) {
-        const activeEvent = events.find((e) => e.status === 'active');
+        const activeEvent = events.find((e) => e.status === "active");
         if (activeEvent) {
-          await dispatch(updateSOSStatus({ eventId: activeEvent.id, status: 'resolved' })).unwrap();
-          Alert.alert(
-            "SOS Deactivated",
-            "Your active SOS has been resolved.",
-            [{ text: "OK" }]
-          );
-        } else {
-          // Fallback: no event found but isActive true; just inform user
-          Alert.alert("SOS", "No active SOS event found to resolve.");
+          await dispatch(
+            updateSOSStatus({ eventId: activeEvent.id, status: "resolved" }),
+          ).unwrap();
+          Alert.alert("SOS Deactivated", "Your active SOS has been resolved.");
         }
         return;
       }
 
-      // Get current location
       const locationResult = await dispatch(getCurrentLocation());
 
       if (locationResult.payload) {
         const location = locationResult.payload as any;
+        const { latitude, longitude } = location;
 
-        // Get address from coordinates for SMS
-        let address = `${location.latitude}, ${location.longitude}`;
-        try {
-          address = await getAddressFromCoordinates(
-            location.latitude,
-            location.longitude
-          );
-        } catch (geocodeError) {
-          console.warn('Failed to geocode for SMS, using coordinates');
-        }
+        const mapsLink = `https://maps.google.com/?q=${latitude},${longitude}`;
+        const message = `Help! I am in danger.\nMy location: ${mapsLink}`;
 
-        // Log SOS event to Firestore (this will also geocode and save address)
-        await dispatch(
-          logSOSEvent({
-            location: {
-              latitude: location.latitude,
-              longitude: location.longitude,
-              accuracy: location.accuracy,
-            },
-            message: "Emergency SOS activated",
+        const eventData = {
+          id: Date.now().toString(),
+          location: {
+            latitude,
+            longitude,
+            accuracy: location.accuracy,
             timestamp: new Date().toISOString(),
-            userId: user?.uid,
-            userName: user?.name,
-          })
-        );
+          },
+          message: "Emergency SOS activated",
+          timestamp: new Date().toISOString(),
+          userId: user?.uid || "offline_user",
+          userName: user?.name || "User",
+          status: "active" as const,
+        };
 
-        // Send SMS to emergency contacts with address
-        if (user?.emergencyContacts && user.emergencyContacts.length > 0) {
+        try {
           const isAvailable = await SMS.isAvailableAsync();
           if (isAvailable) {
-            const emergencyNumbers = user.emergencyContacts.map(
-              (contact: { name: string; phone: string; relation: string }) => contact.phone
-            );
-            const message = `EMERGENCY SOS ALERT!\n\nUser: ${user.name}\nLocation: ${address}\nTime: ${new Date().toLocaleString()}\n\nPlease help immediately!`;
-
+            const emergencyNumbers = user?.emergencyContacts?.length
+              ? user.emergencyContacts.map((contact: any) => contact.phone)
+              : ["112"];
             await SMS.sendSMSAsync(emergencyNumbers, message);
           }
+        } catch (smsError) {
+          console.error("SMS Error:", smsError);
         }
 
-        Alert.alert(
-          "SOS Activated",
-          "Emergency contacts have been notified and your location has been shared.",
-          [{ text: "OK" }]
-        );
-      } else {
-        Alert.alert(
-          "Location Error",
-          "Unable to get your current location. Please try again.",
-          [{ text: "OK" }]
-        );
+        try {
+          await dispatch(logSOSEvent(eventData)).unwrap();
+        } catch (error) {
+          saveSOSLogOffline(eventData);
+        }
+
+        Alert.alert("SOS Activated", "Alerts sent to your emergency contacts.");
       }
     } catch (error) {
-      console.error("SOS Error:", error);
-      Alert.alert("Error", "Failed to activate SOS. Please try again.", [
-        { text: "OK" },
-      ]);
+      Alert.alert("Error", "Failed to activate SOS.");
     } finally {
       setSosLoading(false);
     }
   };
 
   const toggleTracking = async () => {
-    if (!user?.uid) {
-      Alert.alert("Error", "User not authenticated");
-      return;
-    }
-
+    if (!user?.uid) return;
     try {
       if (isTracking) {
-        // Stop tracking
         if (locationSubscriptionRef.current) {
           locationSubscriptionRef.current();
           locationSubscriptionRef.current = null;
         }
         dispatch(stopTracking());
-        Alert.alert(
-          "Tracking Stopped",
-          "Live location tracking has been stopped."
-        );
       } else {
-        // Start tracking
         await dispatch(startLocationTracking(user.uid)).unwrap();
-
-        // Start continuous location service
         const cleanup = await startLocationService(
-          (location) => {
-            // Update Redux state with new location
-            dispatch(setLocation(location));
-          },
-          (error) => {
-            console.error("Location tracking error:", error);
-            Alert.alert(
-              "Tracking Error",
-              "Location tracking encountered an error."
-            );
-          }
+          (loc) => dispatch(setLocation(loc)),
+          (err) => console.error("Tracking error:", err),
         );
-
         locationSubscriptionRef.current = cleanup;
-        Alert.alert(
-          "Tracking Started",
-          "Live location tracking has been started."
-        );
       }
     } catch (error) {
-      console.error("Tracking Error:", error);
-      Alert.alert("Error", "Failed to toggle tracking. Please try again.");
+      Alert.alert("Error", "Failed to toggle tracking.");
     }
   };
 
-  const handleLogout = () => {
-    Alert.alert(
-      'Logout',
-      'Are you sure you want to logout?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Logout',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await dispatch(signOutUser()).unwrap();
-              router.replace('/auth/login');
-            } catch (error) {
-              Alert.alert('Error', 'Failed to logout. Please try again.');
-            }
-          }
-        }
-      ]
-    );
-  };
-
   return (
-    <ScrollView style={styles.container}>
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" />
       <View style={styles.header}>
-        <View style={styles.headerContent}>
+        <View style={styles.headerTop}>
           <View>
-            <Text style={styles.welcomeText}>Welcome, {user?.name || "User"}!</Text>
-            <Text style={styles.subtitle}>Your safety is our priority</Text>
+            <Text style={styles.welcomeText}>
+              Hello, {user?.name?.split(" ")[0] || "User"}
+            </Text>
+            <Text style={styles.statusText}>
+              {isActive ? "🔴 Emergency Active" : "🟢 You are safe"}
+            </Text>
           </View>
-          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-            <Text style={styles.logoutText}>Logout</Text>
+          <TouchableOpacity style={styles.profileButton}>
+            <Ionicons name="person-circle" size={45} color={COLORS.white} />
           </TouchableOpacity>
         </View>
       </View>
 
-      {/* SOS Button */}
-      <View style={styles.sosSection}>
-        {sosLoading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#e74c3c" />
-            <Text style={styles.loadingText}>Activating SOS...</Text>
+      <ScrollView
+        style={styles.content}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 40 }}
+      >
+        {/* SOS Card */}
+        <View style={[styles.card, styles.sosCard]}>
+          <Text style={styles.cardTitle}>Emergency SOS</Text>
+          <View style={styles.sosContainer}>
+            {sosLoading ? (
+              <ActivityIndicator
+                size="large"
+                color={COLORS.primary}
+                style={{ margin: 50 }}
+              />
+            ) : (
+              <SOSButton isActive={isActive} onPress={handleSOSPress} />
+            )}
           </View>
-        ) : (
-          <SOSButton isActive={isActive} onPress={handleSOSPress} />
-        )}
-        <Text style={styles.sosText}>
-          Press the button or shake your device to activate SOS
-        </Text>
-      </View>
+          <Text style={styles.cardFooter}>
+            Hold for 3 seconds or shake your phone
+          </Text>
+        </View>
 
-      {/* Shake Detection Toggle */}
-      <View style={styles.toggleSection}>
-        <Text style={styles.toggleLabel}>Enable Shake Detection</Text>
-        <Switch
-          value={shakeEnabled}
-          onValueChange={setShakeEnabled}
-          trackColor={{ false: "#767577", true: "#e74c3c" }}
-          thumbColor={shakeEnabled ? "#ffffff" : "#f4f3f4"}
-        />
-      </View>
+        {/* Quick Toggles */}
+        <View style={styles.row}>
+          <View style={[styles.smallCard, { flex: 1, marginRight: 10 }]}>
+            <View style={styles.cardIconContainer}>
+              <Ionicons name="hand-right" size={24} color={COLORS.primary} />
+            </View>
+            <Text style={styles.smallCardTitle}>Shake SOS</Text>
+            <Switch
+              value={shakeEnabled}
+              onValueChange={setShakeEnabled}
+              trackColor={{ false: COLORS.grey, true: COLORS.primary }}
+              thumbColor={COLORS.white}
+              style={{ transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }] }}
+            />
+          </View>
 
-      {/* Live Location Map */}
-      <View style={styles.mapSection}>
-        <Text style={styles.sectionTitle}>Your Location</Text>
-        <LiveLocationMap location={currentLocation} permissionGranted={true} />
-      </View>
-
-      {/* Location Tracking Toggle */}
-      <View style={styles.trackingSection}>
-        <View style={styles.trackingHeader}>
-          <Text style={styles.sectionTitle}>Live Tracking</Text>
-          <TouchableOpacity
-            style={[
-              styles.trackingButton,
-              isTracking && styles.trackingButtonActive,
-            ]}
-            onPress={toggleTracking}
-          >
-            <Text
+          <View style={[styles.smallCard, { flex: 1, marginLeft: 10 }]}>
+            <View
               style={[
-                styles.trackingButtonText,
-                isTracking && styles.trackingButtonTextActive,
+                styles.cardIconContainer,
+                { backgroundColor: COLORS.success + "20" },
               ]}
             >
-              {isTracking ? "Stop Tracking" : "Start Tracking"}
-            </Text>
-          </TouchableOpacity>
+              <Ionicons name="navigate" size={24} color={COLORS.success} />
+            </View>
+            <Text style={styles.smallCardTitle}>Live Tracking</Text>
+            <Switch
+              value={isTracking}
+              onValueChange={toggleTracking}
+              trackColor={{ false: COLORS.grey, true: COLORS.success }}
+              thumbColor={COLORS.white}
+              style={{ transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }] }}
+            />
+          </View>
         </View>
-        <Text style={styles.trackingDescription}>
-          {isTracking
-            ? "Your location is being shared with emergency contacts"
-            : "Enable live tracking to share your location with emergency contacts"}
-        </Text>
-      </View>
 
-      {/* Nearby Help Centers */}
-      <View style={styles.helpSection}>
-        <Text style={styles.sectionTitle}>Nearby Help Centers</Text>
+        {/* Map Card */}
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
+            <Text style={styles.cardTitle}>Current Location</Text>
+            <TouchableOpacity onPress={() => dispatch(getCurrentLocation())}>
+              <Ionicons name="refresh" size={20} color={COLORS.primary} />
+            </TouchableOpacity>
+          </View>
+          <View style={styles.mapContainer}>
+            <LiveLocationMap
+              location={currentLocation}
+              permissionGranted={true}
+            />
+          </View>
+        </View>
+
+        {/* Safety Tips Card */}
+        <View style={[styles.card, { backgroundColor: COLORS.secondary }]}>
+          <Text style={[styles.cardTitle, { color: COLORS.white }]}>
+            Safety Points
+          </Text>
+          <View style={styles.tipRow}>
+            <Ionicons
+              name="checkmark-circle"
+              size={18}
+              color={COLORS.success}
+            />
+            <Text style={styles.tipText}>
+              Keep your location shared with family.
+            </Text>
+          </View>
+          <View style={styles.tipRow}>
+            <Ionicons
+              name="checkmark-circle"
+              size={18}
+              color={COLORS.success}
+            />
+            <Text style={styles.tipText}>
+              Always check nearby help centers.
+            </Text>
+          </View>
+        </View>
+
+        {/* Nearby Help Centers */}
         <NearbyHelpCenters userLocation={currentLocation} />
-      </View>
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f8f9fa",
+    backgroundColor: COLORS.background,
   },
   header: {
-    backgroundColor: "#e74c3c",
-    padding: 20,
+    backgroundColor: COLORS.primary,
+    paddingTop: 60,
+    paddingBottom: 30,
+    paddingHorizontal: 25,
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
+    ...SHADOWS.medium,
   },
-  headerContent: {
+  headerTop: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-  },
-  logoutButton: {
-    backgroundColor: "rgba(255, 255, 255, 0.2)",
-    paddingHorizontal: 15,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.3)",
-  },
-  logoutText: {
-    color: "#ffffff",
-    fontSize: 14,
-    fontWeight: "600",
   },
   welcomeText: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#ffffff",
-    marginBottom: 5,
+    fontSize: SIZES.h2,
+    fontWeight: "800",
+    color: COLORS.white,
   },
-  subtitle: {
-    fontSize: 16,
-    color: "#ffffff",
+  statusText: {
+    fontSize: SIZES.small,
+    color: COLORS.white,
     opacity: 0.9,
+    marginTop: 5,
+    fontWeight: "600",
   },
-  sosSection: {
+  profileButton: {
+    padding: 2,
+  },
+  content: {
+    flex: 1,
+    paddingHorizontal: 20,
+    marginTop: -20,
+  },
+  card: {
+    backgroundColor: COLORS.white,
+    borderRadius: 20,
+    padding: 20,
+    marginBottom: 20,
+    ...SHADOWS.medium,
+  },
+  sosCard: {
+    minHeight: 280,
     alignItems: "center",
-    padding: 30,
-    backgroundColor: "#ffffff",
-    margin: 15,
-    borderRadius: 15,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
   },
-  sosText: {
-    fontSize: 14,
-    color: "#7f8c8d",
-    textAlign: "center",
-    marginTop: 15,
-  },
-  toggleSection: {
+  cardHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    backgroundColor: "#ffffff",
-    marginHorizontal: 15,
     marginBottom: 15,
-    padding: 20,
-    borderRadius: 10,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
   },
-  toggleLabel: {
-    fontSize: 16,
-    fontWeight: "500",
-    color: "#2c3e50",
-  },
-  mapSection: {
-    backgroundColor: "#ffffff",
-    marginHorizontal: 15,
-    marginBottom: 15,
-    padding: 20,
-    borderRadius: 10,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  sectionTitle: {
-    fontSize: 18,
+  cardTitle: {
+    fontSize: SIZES.h3,
     fontWeight: "bold",
-    color: "#2c3e50",
-    marginBottom: 15,
+    color: COLORS.text,
   },
-  trackingSection: {
-    backgroundColor: "#ffffff",
-    marginHorizontal: 15,
-    marginBottom: 15,
-    padding: 20,
-    borderRadius: 10,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
+  sosContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    marginVertical: 10,
   },
-  trackingHeader: {
+  cardFooter: {
+    fontSize: SIZES.small,
+    color: COLORS.textLight,
+    textAlign: "center",
+    marginTop: 10,
+  },
+  row: {
     flexDirection: "row",
     justifyContent: "space-between",
+    marginBottom: 20,
+  },
+  smallCard: {
+    backgroundColor: COLORS.white,
+    borderRadius: 20,
+    padding: 15,
+    alignItems: "center",
+    ...SHADOWS.light,
+  },
+  cardIconContainer: {
+    width: 45,
+    height: 45,
+    borderRadius: 22.5,
+    backgroundColor: COLORS.primary + "20",
+    justifyContent: "center",
     alignItems: "center",
     marginBottom: 10,
   },
-  trackingButton: {
-    backgroundColor: "#e74c3c",
-    paddingHorizontal: 15,
-    paddingVertical: 8,
-    borderRadius: 20,
-  },
-  trackingButtonActive: {
-    backgroundColor: "#27ae60",
-  },
-  trackingButtonText: {
-    color: "#ffffff",
-    fontWeight: "bold",
-    fontSize: 12,
-  },
-  trackingButtonTextActive: {
-    color: "#ffffff",
-  },
-  trackingDescription: {
+  smallCardTitle: {
     fontSize: 14,
-    color: "#7f8c8d",
-    lineHeight: 20,
+    fontWeight: "700",
+    color: COLORS.text,
+    marginBottom: 10,
   },
-  loadingContainer: {
+  mapContainer: {
+    height: 200,
+    borderRadius: 15,
+    overflow: "hidden",
+  },
+  tipRow: {
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 40,
+    marginTop: 10,
   },
-  loadingText: {
-    fontSize: 16,
-    color: "#e74c3c",
-    marginTop: 15,
-    fontWeight: "600",
-  },
-  helpSection: {
-    backgroundColor: "#ffffff",
-    marginHorizontal: 15,
-    marginBottom: 30,
-    padding: 20,
-    borderRadius: 10,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
+  tipText: {
+    color: COLORS.white,
+    fontSize: 14,
+    marginLeft: 10,
+    opacity: 0.9,
   },
 });

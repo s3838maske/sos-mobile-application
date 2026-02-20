@@ -1,6 +1,8 @@
-import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { initializeApp } from "firebase/app";
+// @ts-ignore
+import { getReactNativePersistence, initializeAuth } from "firebase/auth";
+import { getFirestore } from "firebase/firestore";
 
 // Firebase configuration
 // const firebaseConfig = {
@@ -20,14 +22,17 @@ const firebaseConfig = {
   storageBucket: "woman-safety-sos-app.firebasestorage.app",
   messagingSenderId: "164867930884",
   appId: "1:164867930884:web:d66d65228cbdd1e0796e51",
-  measurementId: "G-966V69CER6"
+  measurementId: "G-966V69CER6",
 };
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
-// Initialize Auth
-const auth = getAuth(app);
+// Initialize Auth with Persistence
+const auth = initializeAuth(app, {
+  // @ts-ignore - getReactNativePersistence is available in React Native environment
+  persistence: getReactNativePersistence(AsyncStorage),
+});
 
 // Initialize Firestore
 const db = getFirestore(app);

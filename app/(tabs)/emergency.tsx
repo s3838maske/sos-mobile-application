@@ -1,341 +1,306 @@
-import React, { useState } from 'react';
+import { Ionicons } from "@expo/vector-icons";
+import React, { useState } from "react";
 import {
   Alert,
   Linking,
   ScrollView,
+  StatusBar,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View,
-} from 'react-native';
-import { useSelector } from 'react-redux';
-import { RootState } from '../../redux/store';
-import CallButton from '../emergency/components/CallButton';
-import FakeCallUI from '../emergency/components/FakeCallUI';
+} from "react-native";
+import { COLORS, SHADOWS, SIZES } from "../../utils/theme";
+import FakeCallUI from "../emergency/components/FakeCallUI";
 
 const EMERGENCY_NUMBERS = {
-  police: '112',
-  womenHelpline: '1091',
-  domesticViolence: '181',
-  ambulance: '108',
+  police: "112",
+  womenHelpline: "1091",
+  domesticViolence: "181",
+  ambulance: "108",
 };
 
 export default function EmergencyScreen() {
-  const { user } = useSelector((state: RootState) => state.auth);
   const [fakeCallActive, setFakeCallActive] = useState(false);
-  const [callerName, setCallerName] = useState('Mom');
-  const [callDuration, setCallDuration] = useState('30');
+  const callerName = "Home";
 
   const handleEmergencyCall = (number: string, service: string) => {
     Alert.alert(
       `Call ${service}`,
       `Are you sure you want to call ${service} at ${number}?`,
       [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Call', 
-          onPress: () => {
-            Linking.openURL(`tel:${number}`);
-          }
-        }
-      ]
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Call",
+          onPress: () => Linking.openURL(`tel:${number}`),
+        },
+      ],
     );
   };
 
   const handleFakeCall = () => {
-    if (fakeCallActive) {
-      setFakeCallActive(false);
-      Alert.alert('Fake Call Ended', 'The fake call has been ended.');
-    } else {
-      setFakeCallActive(true);
-      Alert.alert(
-        'Fake Call Started',
-        `Incoming call from ${callerName}. This will help you appear busy if needed.`,
-        [{ text: 'OK' }]
-      );
-    }
+    setFakeCallActive(true);
   };
-
-  const handleAnswerCall = () => {
-    Alert.alert('Call Answered', 'Fake call is now active.');
-  };
-
-  const handleDeclineCall = () => {
-    setFakeCallActive(false);
-    Alert.alert('Call Declined', 'Fake call has been declined.');
-  };
-
 
   if (fakeCallActive) {
     return (
       <FakeCallUI
         callerName={callerName}
-        duration={callDuration}
-        onEndCall={handleDeclineCall}
+        duration="∞"
+        onEndCall={() => setFakeCallActive(false)}
       />
     );
   }
 
   return (
-    <ScrollView style={styles.container}>
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" />
       <View style={styles.header}>
-        <Text style={styles.title}>Emergency Services</Text>
-        <Text style={styles.subtitle}>
-          Quick access to emergency contacts and services
-        </Text>
+        <Text style={styles.title}>Emergency Hub</Text>
+        <Text style={styles.subtitle}>Instant help and safety tools</Text>
       </View>
 
-      {/* Emergency Numbers */}
-      <View style={styles.emergencySection}>
-        <Text style={styles.sectionTitle}>Emergency Numbers</Text>
-        
-        <CallButton
-          title="Police"
-          icon="shield"
-          color="#e74c3c"
-          onPress={() => handleEmergencyCall(EMERGENCY_NUMBERS.police, 'Police')}
-        />
-        
-        <CallButton
-          title="Women Helpline"
-          icon="call"
-          color="#9b59b6"
-          onPress={() => handleEmergencyCall(EMERGENCY_NUMBERS.womenHelpline, 'Women Helpline')}
-        />
-        
-        <CallButton
-          title="Domestic Violence"
-          icon="heart"
-          color="#e67e22"
-          onPress={() => handleEmergencyCall(EMERGENCY_NUMBERS.domesticViolence, 'Domestic Violence Helpline')}
-        />
-        
-        <CallButton
-          title="Ambulance"
-          icon="medical"
-          color="#27ae60"
-          onPress={() => handleEmergencyCall(EMERGENCY_NUMBERS.ambulance, 'Ambulance')}
-        />
-      </View>
-
-      {/* Fake Call Feature */}
-      <View style={styles.fakeCallSection}>
-        <Text style={styles.sectionTitle}>Fake Call</Text>
-        <Text style={styles.fakeCallDescription}>
-          Simulate an incoming call to help you appear busy or create an excuse to leave a situation.
-        </Text>
-        
-        <View style={styles.fakeCallControls}>
-          <Text style={styles.controlLabel}>Caller Name:</Text>
-          <Text style={styles.controlValue}>{callerName}</Text>
-          
-          <Text style={styles.controlLabel}>Call Duration:</Text>
-          <Text style={styles.controlValue}>{callDuration} seconds</Text>
+      <ScrollView
+        style={styles.content}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 40 }}
+      >
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Quick Helplines</Text>
+          <View style={styles.grid}>
+            {[
+              {
+                id: "police",
+                label: "Police",
+                num: "112",
+                icon: "shield",
+                color: "#34495E",
+              },
+              {
+                id: "women",
+                label: "Women",
+                num: "1091",
+                icon: "woman",
+                color: "#8E44AD",
+              },
+              {
+                id: "fire",
+                label: "Fire",
+                num: "101",
+                icon: "flame",
+                color: "#E67E22",
+              },
+              {
+                id: "med",
+                label: "Ambulance",
+                num: "108",
+                icon: "medical",
+                color: "#27AE60",
+              },
+            ].map((item) => (
+              <TouchableOpacity
+                key={item.id}
+                style={[styles.callBtn, { borderLeftColor: item.color }]}
+                onPress={() => handleEmergencyCall(item.num, item.label)}
+              >
+                <View
+                  style={[
+                    styles.iconBox,
+                    { backgroundColor: item.color + "15" },
+                  ]}
+                >
+                  <Ionicons
+                    name={item.icon as any}
+                    size={24}
+                    color={item.color}
+                  />
+                </View>
+                <View>
+                  <Text style={styles.callLabel}>{item.label}</Text>
+                  <Text style={styles.callNum}>{item.num}</Text>
+                </View>
+                <Ionicons
+                  name="call"
+                  size={18}
+                  color={COLORS.primary}
+                  style={styles.callIcon}
+                />
+              </TouchableOpacity>
+            ))}
+          </View>
         </View>
 
-        <CallButton
-          title="Start Fake Call"
-          icon="call"
-          color="#3498db"
-          onPress={handleFakeCall}
-        />
-      </View>
-
-      {/* Safety Tips */}
-      <View style={styles.tipsSection}>
-        <Text style={styles.sectionTitle}>Safety Tips</Text>
-        <View style={styles.tipItem}>
-          <Text style={styles.tipNumber}>1</Text>
-          <Text style={styles.tipText}>
-            Always keep your phone charged and easily accessible
+        <TouchableOpacity style={styles.fakeCallCard} onPress={handleFakeCall}>
+          <View style={styles.fakeCallHeader}>
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>SMART TOOL</Text>
+            </View>
+            <Ionicons name="call" size={24} color={COLORS.white} />
+          </View>
+          <Text style={styles.fakeCallTitle}>Simulate Fake Call</Text>
+          <Text style={styles.fakeCallDesc}>
+            Need an excuse to leave? Activate a realistic incoming call
+            instantly.
           </Text>
-        </View>
-        <View style={styles.tipItem}>
-          <Text style={styles.tipNumber}>2</Text>
-          <Text style={styles.tipText}>
-            Share your location with trusted contacts when traveling alone
-          </Text>
-        </View>
-        <View style={styles.tipItem}>
-          <Text style={styles.tipNumber}>3</Text>
-          <Text style={styles.tipText}>
-            Trust your instincts - if something feels wrong, leave immediately
-          </Text>
-        </View>
-        <View style={styles.tipItem}>
-          <Text style={styles.tipNumber}>4</Text>
-          <Text style={styles.tipText}>
-            Keep emergency numbers saved in your phone
-          </Text>
-        </View>
-      </View>
+          <View style={styles.fakeCallBtn}>
+            <Text style={styles.fakeCallBtnText}>Activate Now</Text>
+          </View>
+        </TouchableOpacity>
 
-      {/* Quick Actions */}
-      <View style={styles.quickActionsSection}>
-        <Text style={styles.sectionTitle}>Quick Actions</Text>
-        <Text style={styles.quickActionsDescription}>
-          These actions can help you in emergency situations:
-        </Text>
-        
-        <View style={styles.actionItem}>
-          <Text style={styles.actionIcon}>📱</Text>
-          <Text style={styles.actionText}>Send SOS with location to emergency contacts</Text>
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Safety Protocols</Text>
+          {[
+            { icon: "flashlight", text: "Keep your phone charged above 20%" },
+            { icon: "walk", text: "Walk in well-lit areas at night" },
+            { icon: "share-social", text: "Share your route with a friend" },
+          ].map((tip, i) => (
+            <View key={i} style={styles.tipRow}>
+              <Ionicons
+                name={tip.icon as any}
+                size={20}
+                color={COLORS.primary}
+              />
+              <Text style={styles.tipText}>{tip.text}</Text>
+            </View>
+          ))}
         </View>
-        
-        <View style={styles.actionItem}>
-          <Text style={styles.actionIcon}>📍</Text>
-          <Text style={styles.actionText}>Share live location with trusted contacts</Text>
-        </View>
-        
-        <View style={styles.actionItem}>
-          <Text style={styles.actionIcon}>🚨</Text>
-          <Text style={styles.actionText}>Activate emergency mode with one tap</Text>
-        </View>
-      </View>
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: COLORS.background,
   },
   header: {
-    backgroundColor: '#e74c3c',
-    padding: 20,
-    alignItems: 'center',
+    backgroundColor: COLORS.primary,
+    paddingTop: 80,
+    paddingBottom: 40,
+    paddingHorizontal: 25,
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
+    ...SHADOWS.medium,
   },
   title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#ffffff',
-    marginBottom: 5,
+    fontSize: SIZES.h2,
+    fontWeight: "800",
+    color: COLORS.white,
   },
   subtitle: {
-    fontSize: 16,
-    color: '#ffffff',
-    opacity: 0.9,
-    textAlign: 'center',
+    fontSize: SIZES.small,
+    color: COLORS.white,
+    opacity: 0.8,
   },
-  emergencySection: {
-    backgroundColor: '#ffffff',
-    margin: 15,
-    padding: 20,
-    borderRadius: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
+  content: {
+    flex: 1,
+    paddingHorizontal: 20,
+    marginTop: 5,
+  },
+  section: {
+    marginBottom: 25,
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#2c3e50',
+    fontWeight: "bold",
+    color: COLORS.text,
     marginBottom: 15,
+    marginLeft: 5,
   },
-  fakeCallSection: {
-    backgroundColor: '#ffffff',
-    marginHorizontal: 15,
-    marginBottom: 15,
-    padding: 20,
-    borderRadius: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
+  grid: {
+    gap: 12,
   },
-  fakeCallDescription: {
-    fontSize: 14,
-    color: '#7f8c8d',
-    marginBottom: 15,
-    lineHeight: 20,
-  },
-  fakeCallControls: {
-    backgroundColor: '#f8f9fa',
+  callBtn: {
+    backgroundColor: COLORS.white,
     padding: 15,
-    borderRadius: 8,
-    marginBottom: 15,
+    borderRadius: 18,
+    flexDirection: "row",
+    alignItems: "center",
+    borderLeftWidth: 5,
+    ...SHADOWS.light,
   },
-  controlLabel: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#2c3e50',
-    marginBottom: 5,
-  },
-  controlValue: {
-    fontSize: 16,
-    color: '#e74c3c',
-    fontWeight: 'bold',
-    marginBottom: 10,
-  },
-  tipsSection: {
-    backgroundColor: '#ffffff',
-    marginHorizontal: 15,
-    marginBottom: 15,
-    padding: 20,
-    borderRadius: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  tipItem: {
-    flexDirection: 'row',
-    marginBottom: 15,
-    alignItems: 'flex-start',
-  },
-  tipNumber: {
-    width: 24,
-    height: 24,
+  iconBox: {
+    width: 45,
+    height: 45,
     borderRadius: 12,
-    backgroundColor: '#e74c3c',
-    color: '#ffffff',
-    textAlign: 'center',
-    lineHeight: 24,
-    fontSize: 12,
-    fontWeight: 'bold',
-    marginRight: 12,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 15,
+  },
+  callLabel: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: COLORS.text,
+  },
+  callNum: {
+    fontSize: 13,
+    color: COLORS.textLight,
+  },
+  callIcon: {
+    marginLeft: "auto",
+  },
+  fakeCallCard: {
+    backgroundColor: COLORS.secondary,
+    borderRadius: 25,
+    padding: 25,
+    marginBottom: 30,
+    ...SHADOWS.medium,
+  },
+  fakeCallHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 15,
+  },
+  badge: {
+    backgroundColor: "rgba(255,255,255,0.2)",
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+  },
+  badgeText: {
+    color: COLORS.white,
+    fontSize: 10,
+    fontWeight: "900",
+  },
+  fakeCallTitle: {
+    color: COLORS.white,
+    fontSize: 22,
+    fontWeight: "bold",
+    marginBottom: 8,
+  },
+  fakeCallDesc: {
+    color: COLORS.white,
+    opacity: 0.7,
+    fontSize: 14,
+    lineHeight: 20,
+    marginBottom: 20,
+  },
+  fakeCallBtn: {
+    backgroundColor: COLORS.white,
+    paddingVertical: 12,
+    borderRadius: 15,
+    alignItems: "center",
+  },
+  fakeCallBtnText: {
+    color: COLORS.secondary,
+    fontWeight: "bold",
+    fontSize: 15,
+  },
+  tipRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: COLORS.white,
+    padding: 15,
+    borderRadius: 15,
+    marginBottom: 10,
+    ...SHADOWS.light,
   },
   tipText: {
+    marginLeft: 12,
+    fontSize: 14,
+    color: COLORS.text,
     flex: 1,
-    fontSize: 14,
-    color: '#2c3e50',
-    lineHeight: 20,
-  },
-  quickActionsSection: {
-    backgroundColor: '#ffffff',
-    marginHorizontal: 15,
-    marginBottom: 30,
-    padding: 20,
-    borderRadius: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  quickActionsDescription: {
-    fontSize: 14,
-    color: '#7f8c8d',
-    marginBottom: 15,
-    lineHeight: 20,
-  },
-  actionItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  actionIcon: {
-    fontSize: 20,
-    marginRight: 12,
-  },
-  actionText: {
-    flex: 1,
-    fontSize: 14,
-    color: '#2c3e50',
-    lineHeight: 20,
   },
 });

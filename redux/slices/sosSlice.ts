@@ -1,10 +1,11 @@
-import { createAsyncThunk, createSlice, PayloadAction } from '@reduxjs/toolkit';
+import { createAsyncThunk, createSlice, PayloadAction } from "@reduxjs/toolkit";
 import {
   fetchSOSEvents as fetchSOSEventsService,
   logSOSEvent as logSOSEventService,
   updateSOSEventStatus,
-} from '../../services/sosService';
-import { SOSEvent, SOSState } from '../types';
+} from "../../services/sosService";
+import { saveSOSLogOffline } from "../../services/sqliteService";
+import { SOSEvent, SOSState } from "../types";
 
 const initialState: SOSState = {
   events: [],
@@ -15,30 +16,42 @@ const initialState: SOSState = {
 
 // Async thunks
 export const logSOSEvent = createAsyncThunk(
-  'sos/logSOSEvent',
-  async (sosData: { location: any; message: string; timestamp: string; userId?: string; userName?: string }) => {
+  "sos/logSOSEvent",
+  async (sosData: {
+    location: any;
+    message: string;
+    timestamp: string;
+    userId?: string;
+    userName?: string;
+  }) => {
     const id = await logSOSEventService(sosData);
-    return { ...sosData, id, status: 'active' } as SOSEvent;
-  }
+    return { ...sosData, id, status: "active" } as SOSEvent;
+  },
 );
 
 export const fetchSOSEvents = createAsyncThunk(
-  'sos/fetchSOSEvents',
+  "sos/fetchSOSEvents",
   async (limitCount: number = 50) => {
     return await fetchSOSEventsService(limitCount);
-  }
+  },
 );
 
 export const updateSOSStatus = createAsyncThunk(
-  'sos/updateSOSStatus',
-  async ({ eventId, status }: { eventId: string; status: 'active' | 'resolved' | 'false_alarm' }) => {
+  "sos/updateSOSStatus",
+  async ({
+    eventId,
+    status,
+  }: {
+    eventId: string;
+    status: "active" | "resolved" | "false_alarm";
+  }) => {
     await updateSOSEventStatus(eventId, status);
     return { eventId, status };
-  }
+  },
 );
 
 const sosSlice = createSlice({
-  name: 'sos',
+  name: "sos",
   initialState,
   reducers: {
     setSOSActive: (state, action: PayloadAction<boolean>) => {
@@ -60,13 +73,14 @@ const sosSlice = createSlice({
       })
       .addCase(logSOSEvent.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.events.unshift(action.payload);
+        state.events = [action.payload, ...state.events];
         state.isActive = true;
-        state.error = null;
+        // Sync to SQLite
+        saveSOSLogOffline(action.payload);
       })
       .addCase(logSOSEvent.rejected, (state, action) => {
         state.isLoading = false;
-        state.error = action.error.message || 'Failed to log SOS event';
+        state.error = action.error.message || "Failed to log SOS event";
       })
       // Fetch SOS Events
       .addCase(fetchSOSEvents.pending, (state) => {
@@ -76,19 +90,23 @@ const sosSlice = createSlice({
       .addCase(fetchSOSEvents.fulfilled, (state, action) => {
         state.isLoading = false;
         state.events = action.payload;
-        state.error = null;
+        // Sync all to SQLite
+        action.payload.forEach((event) => saveSOSLogOffline(event));
       })
       .addCase(fetchSOSEvents.rejected, (state, action) => {
         state.isLoading = false;
-        state.error = action.error.message || 'Failed to fetch SOS events';
+        state.error = action.error.message || "Failed to fetch SOS events";
       })
       // Update SOS Status
       .addCase(updateSOSStatus.fulfilled, (state, action) => {
-        const event = state.events.find(e => e.id === action.payload.eventId);
+        const event = state.events.find((e) => e.id === action.payload.eventId);
         if (event) {
           event.status = action.payload.status;
         }
-        if (action.payload.status === 'resolved' || action.payload.status === 'false_alarm') {
+        if (
+          action.payload.status === "resolved" ||
+          action.payload.status === "false_alarm"
+        ) {
           state.isActive = false;
         }
       });

@@ -1,18 +1,19 @@
-import { Ionicons } from '@expo/vector-icons';
-import React, { useEffect, useState } from 'react';
+import { Ionicons } from "@expo/vector-icons";
+import React, { useEffect, useState } from "react";
 import {
+  Linking,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
-} from 'react-native';
-import { LocationData } from '../../../redux/types';
+} from "react-native";
+import { LocationData } from "../../../redux/types";
 
 interface HelpCenter {
   id: string;
   name: string;
-  type: 'police' | 'hospital' | 'ngo';
+  type: "police" | "hospital" | "ngo";
   distance: string;
   phone: string;
   address: string;
@@ -22,7 +23,9 @@ interface NearbyHelpCentersProps {
   userLocation: LocationData | null;
 }
 
-export default function NearbyHelpCenters({ userLocation }: NearbyHelpCentersProps) {
+export default function NearbyHelpCenters({
+  userLocation,
+}: NearbyHelpCentersProps) {
   const [helpCenters, setHelpCenters] = useState<HelpCenter[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -37,31 +40,31 @@ export default function NearbyHelpCenters({ userLocation }: NearbyHelpCentersPro
     // Mock data - In real app, this would use Google Places API
     const mockCenters: HelpCenter[] = [
       {
-        id: '1',
-        name: 'Central Police Station',
-        type: 'police',
-        distance: '0.5 km',
-        phone: '100',
-        address: '123 Main Street, City Center',
+        id: "1",
+        name: "Central Police Station",
+        type: "police",
+        distance: "0.5 km",
+        phone: "100",
+        address: "123 Main Street, City Center",
       },
       {
-        id: '2',
-        name: 'City General Hospital',
-        type: 'hospital',
-        distance: '1.2 km',
-        phone: '108',
-        address: '456 Health Avenue, Medical District',
+        id: "2",
+        name: "City General Hospital",
+        type: "hospital",
+        distance: "1.2 km",
+        phone: "108",
+        address: "456 Health Avenue, Medical District",
       },
       {
-        id: '3',
-        name: 'Women Safety NGO',
-        type: 'ngo',
-        distance: '0.8 km',
-        phone: '1091',
-        address: '789 Support Street, Community Center',
+        id: "3",
+        name: "Women Safety NGO",
+        type: "ngo",
+        distance: "0.8 km",
+        phone: "1091",
+        address: "789 Support Street, Community Center",
       },
     ];
-    
+
     setTimeout(() => {
       setHelpCenters(mockCenters);
       setLoading(false);
@@ -70,33 +73,37 @@ export default function NearbyHelpCenters({ userLocation }: NearbyHelpCentersPro
 
   const getIconName = (type: string) => {
     switch (type) {
-      case 'police':
-        return 'shield';
-      case 'hospital':
-        return 'medical';
-      case 'ngo':
-        return 'people';
+      case "police":
+        return "shield";
+      case "hospital":
+        return "medical";
+      case "ngo":
+        return "people";
       default:
-        return 'location';
+        return "location";
     }
   };
 
   const getTypeColor = (type: string) => {
     switch (type) {
-      case 'police':
-        return '#3498db';
-      case 'hospital':
-        return '#e74c3c';
-      case 'ngo':
-        return '#9b59b6';
+      case "police":
+        return "#3498db";
+      case "hospital":
+        return "#e74c3c";
+      case "ngo":
+        return "#9b59b6";
       default:
-        return '#95a5a6';
+        return "#95a5a6";
     }
   };
 
   const handleCall = (phone: string) => {
-    // In real app, this would use Linking to make a call
-    console.log(`Calling ${phone}`);
+    Linking.openURL(`tel:${phone}`);
+  };
+
+  const handleOpenMap = (address: string, name: string) => {
+    const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(name + " " + address)}`;
+    Linking.openURL(url);
   };
 
   if (loading) {
@@ -113,8 +120,8 @@ export default function NearbyHelpCenters({ userLocation }: NearbyHelpCentersPro
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Nearby Help Centers</Text>
-      <ScrollView 
-        horizontal 
+      <ScrollView
+        horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
@@ -128,17 +135,28 @@ export default function NearbyHelpCenters({ userLocation }: NearbyHelpCentersPro
               />
               <Text style={styles.centerName}>{center.name}</Text>
             </View>
-            
+
             <Text style={styles.centerDistance}>{center.distance}</Text>
-            <Text style={styles.centerAddress}>{center.address}</Text>
-            
-            <TouchableOpacity
-              style={[styles.callButton, { backgroundColor: getTypeColor(center.type) }]}
-              onPress={() => handleCall(center.phone)}
-            >
-              <Ionicons name="call" size={16} color="white" />
-              <Text style={styles.callButtonText}>Call {center.phone}</Text>
-            </TouchableOpacity>
+            <Text style={styles.address}>{center.address}</Text>
+
+            <View style={styles.cardActions}>
+              <TouchableOpacity
+                style={[
+                  styles.actionButton,
+                  { backgroundColor: getTypeColor(center.type) },
+                ]}
+                onPress={() => handleCall(center.phone)}
+              >
+                <Ionicons name="call" size={16} color="white" />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.actionButton, { backgroundColor: "#2ecc71" }]}
+                onPress={() => handleOpenMap(center.address, center.name)}
+              >
+                <Ionicons name="map" size={16} color="white" />
+              </TouchableOpacity>
+            </View>
           </View>
         ))}
       </ScrollView>
@@ -148,75 +166,73 @@ export default function NearbyHelpCenters({ userLocation }: NearbyHelpCentersPro
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: 'white',
+    backgroundColor: "white",
     borderRadius: 10,
     padding: 10,
   },
   title: {
     fontSize: 18,
-    fontWeight: '600',
-    color: '#2c3e50',
+    fontWeight: "600",
+    color: "#2c3e50",
     marginBottom: 15,
   },
   loadingContainer: {
-    alignItems: 'center',
+    alignItems: "center",
     padding: 20,
   },
   loadingText: {
     fontSize: 16,
-    color: '#7f8c8d',
+    color: "#7f8c8d",
   },
   scrollContent: {
     paddingRight: 15,
   },
   centerCard: {
     width: 200,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: "#f8f9fa",
     borderRadius: 10,
     padding: 10,
     marginRight: 15,
     borderWidth: 1,
-    borderColor: '#e1e8ed',
-    display: 'flex',
-    flexDirection: 'column',
+    borderColor: "#e1e8ed",
+    display: "flex",
+    flexDirection: "column",
     // alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: "space-between",
   },
   centerHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 8,
   },
   centerName: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#2c3e50',
+    fontWeight: "600",
+    color: "#2c3e50",
     marginLeft: 8,
     flex: 1,
   },
   centerDistance: {
     fontSize: 14,
-    color: '#27ae60',
-    fontWeight: '500',
+    color: "#27ae60",
+    fontWeight: "500",
     marginBottom: 5,
   },
-  centerAddress: {
+  address: {
     fontSize: 12,
-    color: '#7f8c8d',
-    marginBottom: 15,
+    color: "#7f8c8d",
+    marginBottom: 10,
     lineHeight: 16,
   },
-  callButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 10,
-    borderRadius: 6,
+  cardActions: {
+    flexDirection: "row",
+    justifyContent: "space-between",
   },
-  callButtonText: {
-    color: 'white',
-    fontSize: 14,
-    fontWeight: '600',
-    marginLeft: 5,
+  actionButton: {
+    flex: 0.48,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 8,
+    borderRadius: 6,
   },
 });

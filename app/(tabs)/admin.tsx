@@ -1,338 +1,316 @@
-import React, { useEffect, useState } from 'react';
+import { Ionicons } from "@expo/vector-icons";
+import React, { useCallback, useEffect, useState } from "react";
 import {
-  Alert,
+  RefreshControl,
   ScrollView,
+  StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
-} from 'react-native';
-import { useDispatch, useSelector } from 'react-redux';
-import { fetchSOSEvents } from '../../redux/slices/sosSlice';
-import { AppDispatch, RootState } from '../../redux/store';
-import HeatmapView from '../admin/components/HeatmapView';
-import SOSLogsTable from '../admin/components/SOSLogsTable';
+} from "react-native";
+import { useDispatch, useSelector } from "react-redux";
+import { fetchAllUsers } from "../../redux/slices/authSlice";
+import { fetchSOSEvents } from "../../redux/slices/sosSlice";
+import { AppDispatch, RootState } from "../../redux/store";
+import { COLORS, SHADOWS, SIZES } from "../../utils/theme";
+import ActivityLogsTable from "../admin/components/ActivityLogsTable";
+import EmergencyContactsTable from "../admin/components/EmergencyContactsTable";
+import HeatmapView from "../admin/components/HeatmapView";
+import SOSLogsTable from "../admin/components/SOSLogsTable";
+import SystemSettings from "../admin/components/SystemSettings";
+import UsersTable from "../admin/components/UsersTable";
+
+type AdminTab =
+  | "users"
+  | "alerts"
+  | "contacts"
+  | "activity"
+  | "heatmap"
+  | "settings";
 
 export default function AdminScreen() {
   const dispatch = useDispatch<AppDispatch>();
-  const { user } = useSelector((state: RootState) => state.auth);
-  const { events, isLoading } = useSelector((state: RootState) => state.sos);
-  const [activeTab, setActiveTab] = useState<'logs' | 'heatmap'>('logs');
+  const {
+    user,
+    allUsers,
+    isLoading: authLoading,
+  } = useSelector((state: RootState) => state.auth);
+  const { events, isLoading: sosLoading } = useSelector(
+    (state: RootState) => state.sos,
+  );
+  const [activeTab, setActiveTab] = useState<AdminTab>("users");
+  const [refreshing, setRefreshing] = useState(false);
+
+  const loadData = useCallback(async () => {
+    try {
+      await Promise.all([
+        dispatch(fetchSOSEvents(100)).unwrap(),
+        dispatch(fetchAllUsers()).unwrap(),
+      ]);
+    } catch (error) {
+      console.error("Data loading error:", error);
+    }
+  }, [dispatch]);
 
   useEffect(() => {
-    // Fetch SOS events when component mounts
-    dispatch(fetchSOSEvents(100));
-  }, []);
+    loadData();
+  }, [loadData]);
 
-  // Check if user is admin
-  const isAdmin = user?.email === 'admin@safetyapp.com';
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await loadData();
+    setRefreshing(false);
+  }, [loadData]);
+
+  const isAdmin = user?.email === "admin@safetyapp.com";
 
   if (!isAdmin) {
     return (
       <View style={styles.container}>
         <View style={styles.errorContainer}>
+          <Ionicons name="lock-closed" size={80} color={COLORS.danger} />
           <Text style={styles.errorTitle}>Access Denied</Text>
-          <Text style={styles.errorText}>
-            You don't have permission to access the admin panel.
-          </Text>
+          <Text style={styles.errorText}>Authorized administrators only.</Text>
         </View>
       </View>
     );
   }
 
-  const handleRefresh = () => {
-    dispatch(fetchSOSEvents(100));
+  const stats = {
+    totalUsers: allUsers?.length || 0,
+    activeSOS: (events || []).filter((e) => e.status === "active").length,
+    totalContacts:
+      allUsers?.reduce(
+        (acc, curr) => acc + (curr.emergencyContacts?.length || 0),
+        0,
+      ) || 0,
+    todaySOS: (events || []).filter(
+      (e) => new Date(e.timestamp).toDateString() === new Date().toDateString(),
+    ).length,
   };
 
-  const getStatistics = () => {
-    const safeEvents = events || [];
-    const totalEvents = safeEvents.length;
-    const activeEvents = safeEvents.filter(event => event.status === 'active').length;
-    const resolvedEvents = safeEvents.filter(event => event.status === 'resolved').length;
-    const todayEvents = safeEvents.filter(event => {
-      const today = new Date();
-      const eventDate = new Date(event.timestamp);
-      return eventDate.toDateString() === today.toDateString();
-    }).length;
-
-    return {
-      totalEvents,
-      activeEvents,
-      resolvedEvents,
-      todayEvents,
-    };
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case "users":
+        return <UsersTable users={allUsers || []} isLoading={authLoading} />;
+      case "alerts":
+        return <SOSLogsTable events={events || []} isLoading={sosLoading} />;
+      case "contacts":
+        return (
+          <EmergencyContactsTable
+            users={allUsers || []}
+            isLoading={authLoading}
+          />
+        );
+      case "activity":
+        return <ActivityLogsTable />;
+      case "heatmap":
+        return <HeatmapView events={events || []} />;
+      case "settings":
+        return <SystemSettings />;
+      default:
+        return null;
+    }
   };
 
-  const stats = getStatistics();
+  const tabs: { id: AdminTab; label: string; icon: any }[] = [
+    { id: "users", label: "Users", icon: "people" },
+    { id: "alerts", label: "History", icon: "list" },
+    { id: "contacts", label: "Contacts", icon: "call" },
+    { id: "activity", label: "Pulse", icon: "pulse" },
+    { id: "heatmap", label: "Map", icon: "map" },
+    { id: "settings", label: "Config", icon: "settings" },
+  ];
 
   return (
-    <ScrollView style={styles.container}>
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" />
       <View style={styles.header}>
-        <Text style={styles.title}>Admin Dashboard</Text>
-        <Text style={styles.subtitle}>Monitor SOS events and safety statistics</Text>
+        <Text style={styles.title}>Admin Command</Text>
+        <Text style={styles.subtitle}>System Monitoring & Oversight</Text>
       </View>
 
-      {/* Statistics Cards */}
-      <View style={styles.statsContainer}>
-        <View style={styles.statCard}>
-          <Text style={styles.statNumber}>{stats.totalEvents}</Text>
-          <Text style={styles.statLabel}>Total Events</Text>
-        </View>
-
-        <View style={styles.statCard}>
-          <Text style={[styles.statNumber, { color: '#e74c3c' }]}>{stats.activeEvents}</Text>
-          <Text style={styles.statLabel}>Active</Text>
-        </View>
-
-        <View style={styles.statCard}>
-          <Text style={[styles.statNumber, { color: '#27ae60' }]}>{stats.resolvedEvents}</Text>
-          <Text style={styles.statLabel}>Resolved</Text>
-        </View>
-
-        <View style={styles.statCard}>
-          <Text style={[styles.statNumber, { color: '#3498db' }]}>{stats.todayEvents}</Text>
-          <Text style={styles.statLabel}>Today</Text>
+      <View style={styles.statsCard}>
+        <View style={styles.statsRow}>
+          <View style={styles.statBox}>
+            <Text style={styles.statNum}>{stats.totalUsers}</Text>
+            <Text style={styles.statLabel}>Users</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statBox}>
+            <Text style={[styles.statNum, { color: COLORS.danger }]}>
+              {stats.activeSOS}
+            </Text>
+            <Text style={styles.statLabel}>Active</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statBox}>
+            <Text style={styles.statNum}>{stats.totalContacts}</Text>
+            <Text style={styles.statLabel}>Contacts</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statBox}>
+            <Text style={styles.statNum}>{stats.todaySOS}</Text>
+            <Text style={styles.statLabel}>Today</Text>
+          </View>
         </View>
       </View>
 
-      {/* Tab Navigation */}
-      <View style={styles.tabContainer}>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'logs' && styles.activeTab]}
-          onPress={() => setActiveTab('logs')}
+      <View style={styles.tabsWrapper}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.tabsContainer}
         >
-          <Text style={[styles.tabText, activeTab === 'logs' && styles.activeTabText]}>
-            SOS Logs
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'heatmap' && styles.activeTab]}
-          onPress={() => setActiveTab('heatmap')}
-        >
-          <Text style={[styles.tabText, activeTab === 'heatmap' && styles.activeTabText]}>
-            Heatmap
-          </Text>
-        </TouchableOpacity>
+          {tabs.map((tab) => (
+            <TouchableOpacity
+              key={tab.id}
+              style={[
+                styles.tabBtn,
+                activeTab === tab.id && styles.activeTabBtn,
+              ]}
+              onPress={() => setActiveTab(tab.id)}
+            >
+              <Ionicons
+                name={tab.icon}
+                size={20}
+                color={activeTab === tab.id ? COLORS.white : COLORS.textLight}
+              />
+              <Text
+                style={[
+                  styles.tabLabel,
+                  activeTab === tab.id && styles.activeTabLabel,
+                ]}
+              >
+                {tab.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
       </View>
 
-      {/* Refresh Button */}
-      <View style={styles.refreshContainer}>
-        <TouchableOpacity
-          style={styles.refreshButton}
-          onPress={handleRefresh}
-          disabled={isLoading}
-        >
-          <Text style={styles.refreshButtonText}>
-            {isLoading ? 'Refreshing...' : 'Refresh Data'}
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Content based on active tab */}
-      {activeTab === 'logs' ? (
-        <View style={styles.contentContainer}>
-          <Text style={styles.contentTitle}>SOS Event Logs</Text>
-          <SOSLogsTable events={events || []} isLoading={isLoading} />
-        </View>
-      ) : (
-        <View style={styles.contentContainer}>
-          <Text style={styles.contentTitle}>Safety Heatmap</Text>
-          <HeatmapView events={events || []} />
-        </View>
-      )}
-
-      {/* Quick Actions */}
-      <View style={styles.actionsContainer}>
-        <Text style={styles.actionsTitle}>Quick Actions</Text>
-
-        <TouchableOpacity
-          style={styles.actionButton}
-          onPress={() => Alert.alert('Export Data', 'Export functionality coming soon!')}
-        >
-          <Text style={styles.actionButtonText}>Export Data</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.actionButton}
-          onPress={() => Alert.alert('Generate Report', 'Report generation coming soon!')}
-        >
-          <Text style={styles.actionButtonText}>Generate Report</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.actionButton}
-          onPress={() => Alert.alert('Send Alerts', 'Alert system coming soon!')}
-        >
-          <Text style={styles.actionButtonText}>Send Safety Alerts</Text>
-        </TouchableOpacity>
-      </View>
-    </ScrollView>
+      <ScrollView
+        style={styles.content}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[COLORS.primary]}
+          />
+        }
+      >
+        <View style={styles.tabContentWrapper}>{renderTabContent()}</View>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: COLORS.background,
   },
   header: {
-    backgroundColor: '#e74c3c',
-    padding: 20,
-    alignItems: 'center',
+    backgroundColor: COLORS.secondary,
+    paddingTop: 60,
+    paddingBottom: 40,
+    paddingHorizontal: 25,
   },
   title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#ffffff',
-    marginBottom: 5,
+    fontSize: SIZES.h1,
+    fontWeight: "800",
+    color: COLORS.white,
   },
   subtitle: {
-    fontSize: 16,
-    color: '#ffffff',
-    opacity: 0.9,
-    textAlign: 'center',
+    fontSize: SIZES.small,
+    color: COLORS.white,
+    opacity: 0.7,
+  },
+  statsCard: {
+    backgroundColor: COLORS.white,
+    marginHorizontal: 20,
+    marginTop: -25,
+    borderRadius: 20,
+    padding: 20,
+    ...SHADOWS.medium,
+  },
+  statsRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  statBox: {
+    flex: 1,
+    alignItems: "center",
+  },
+  statNum: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: COLORS.text,
+  },
+  statLabel: {
+    fontSize: 10,
+    color: COLORS.textLight,
+    textTransform: "uppercase",
+    marginTop: 2,
+  },
+  statDivider: {
+    width: 1,
+    height: 30,
+    backgroundColor: COLORS.lightGrey,
+  },
+  tabsWrapper: {
+    marginTop: 20,
+    marginBottom: 10,
+  },
+  tabsContainer: {
+    paddingHorizontal: 20,
+  },
+  tabBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: COLORS.white,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 12,
+    marginRight: 10,
+    ...SHADOWS.light,
+  },
+  activeTabBtn: {
+    backgroundColor: COLORS.primary,
+  },
+  tabLabel: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: COLORS.textLight,
+    marginLeft: 8,
+  },
+  activeTabLabel: {
+    color: COLORS.white,
+  },
+  content: {
+    flex: 1,
+  },
+  tabContentWrapper: {
+    padding: 20,
   },
   errorContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 40,
   },
   errorTitle: {
     fontSize: 24,
-    fontWeight: 'bold',
-    color: '#e74c3c',
-    marginBottom: 10,
+    fontWeight: "bold",
+    color: COLORS.danger,
+    marginTop: 20,
   },
   errorText: {
     fontSize: 16,
-    color: '#7f8c8d',
-    textAlign: 'center',
-    lineHeight: 24,
-  },
-  statsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    padding: 15,
-    justifyContent: 'space-between',
-  },
-  statCard: {
-    backgroundColor: '#ffffff',
-    width: '48%',
-    padding: 20,
-    borderRadius: 10,
-    alignItems: 'center',
-    marginBottom: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  statNumber: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#2c3e50',
-    marginBottom: 5,
-  },
-  statLabel: {
-    fontSize: 14,
-    color: '#7f8c8d',
-    textAlign: 'center',
-  },
-  tabContainer: {
-    flexDirection: 'row',
-    backgroundColor: '#ffffff',
-    marginHorizontal: 15,
-    marginBottom: 15,
-    borderRadius: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  tab: {
-    flex: 1,
-    paddingVertical: 15,
-    alignItems: 'center',
-    borderRadius: 10,
-  },
-  activeTab: {
-    backgroundColor: '#e74c3c',
-  },
-  tabText: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#7f8c8d',
-  },
-  activeTabText: {
-    color: '#ffffff',
-  },
-  refreshContainer: {
-    paddingHorizontal: 15,
-    marginBottom: 15,
-  },
-  refreshButton: {
-    backgroundColor: '#3498db',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  refreshButtonText: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  contentContainer: {
-    backgroundColor: '#ffffff',
-    marginHorizontal: 15,
-    marginBottom: 15,
-    padding: 20,
-    borderRadius: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  contentTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#2c3e50',
-    marginBottom: 15,
-  },
-  actionsContainer: {
-    backgroundColor: '#ffffff',
-    marginHorizontal: 15,
-    marginBottom: 30,
-    padding: 20,
-    borderRadius: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  actionsTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#2c3e50',
-    marginBottom: 15,
-  },
-  actionButton: {
-    backgroundColor: '#e74c3c',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  actionButtonText: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: 'bold',
+    color: COLORS.textLight,
+    textAlign: "center",
+    marginTop: 10,
   },
 });

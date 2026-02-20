@@ -1,523 +1,613 @@
-import { Ionicons } from '@expo/vector-icons';
-import React, { useEffect, useState } from 'react';
+import { Ionicons } from "@expo/vector-icons";
+import * as Location from "expo-location";
+import { useRouter } from "expo-router";
+import * as SMS from "expo-sms";
+import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   Modal,
   ScrollView,
+  StatusBar,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
-} from 'react-native';
-import { useDispatch, useSelector } from 'react-redux';
+} from "react-native";
+import { useDispatch, useSelector } from "react-redux";
 import {
   addEmergencyContact,
+  changePassword,
   refreshUserData,
   removeEmergencyContact,
+  signOutUser,
   updateEmergencyContact,
   updateUserProfile,
-} from '../../redux/slices/authSlice';
-import { AppDispatch, RootState } from '../../redux/store';
-import { EmergencyContact as EmergencyContactType } from '../../redux/types';
-import EmergencyContacts from '../profile/components/EmergencyContacts';
-import ProfileCard from '../profile/components/ProfileCard';
+} from "../../redux/slices/authSlice";
+import { AppDispatch, RootState } from "../../redux/store";
+import { EmergencyContact as EmergencyContactType } from "../../redux/types";
+import { COLORS, SHADOWS, SIZES } from "../../utils/theme";
+import EmergencyContacts from "../profile/components/EmergencyContacts";
+import ProfileCard from "../profile/components/ProfileCard";
 
 export default function ProfileScreen() {
+  const router = useRouter();
   const dispatch = useDispatch<AppDispatch>();
   const { user, isLoading } = useSelector((state: RootState) => state.auth);
   const [isEditing, setIsEditing] = useState(false);
   const [showEmergencyContacts, setShowEmergencyContacts] = useState(false);
+  const [showChangePassword, setShowChangePassword] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
+  const [permissions, setPermissions] = useState({
+    location: "Checking...",
+    sms: "Checking...",
+  });
 
-  // Refresh user data when component mounts
+  const checkPermissions = async () => {
+    const { status: locStatus } =
+      await Location.getForegroundPermissionsAsync();
+    const smsStatus = await SMS.isAvailableAsync();
+    setPermissions({
+      location: locStatus === "granted" ? "Granted" : "Denied",
+      sms: smsStatus ? "Available" : "Unavailable",
+    });
+  };
+
   useEffect(() => {
     if (user?.uid) {
       dispatch(refreshUserData(user.uid));
+      checkPermissions();
     }
   }, []);
 
   const handleSaveProfile = async (updatedData: any) => {
     try {
       if (user) {
-        await dispatch(updateUserProfile({
-          ...user,
-          ...updatedData,
-        })).unwrap();
+        await dispatch(updateUserProfile({ ...user, ...updatedData })).unwrap();
         setIsEditing(false);
-        Alert.alert('Success', 'Profile updated successfully!');
+        Alert.alert("Success", "Profile updated successfully!");
       }
     } catch (error) {
-      console.error('Profile Update Error:', error);
-      Alert.alert('Error', 'Failed to update profile. Please try again.');
+      Alert.alert("Error", "Failed to update profile.");
     }
   };
 
   const handleAddEmergencyContact = async (contact: EmergencyContactType) => {
     try {
       if (user?.uid) {
-        await dispatch(addEmergencyContact({
-          userId: user.uid,
-          contact
-        })).unwrap();
-        Alert.alert('Success', 'Emergency contact added successfully!');
+        await dispatch(
+          addEmergencyContact({ userId: user.uid, contact }),
+        ).unwrap();
+        Alert.alert("Success", "Emergency contact added!");
       }
     } catch (error) {
-      console.error('Add Contact Error:', error);
-      Alert.alert('Error', 'Failed to add emergency contact. Please try again.');
+      Alert.alert("Error", "Failed to add contact.");
     }
   };
 
   const handleRemoveEmergencyContact = async (index: number) => {
     try {
       if (user?.uid) {
-        await dispatch(removeEmergencyContact({
-          userId: user.uid,
-          contactIndex: index
-        })).unwrap();
-        Alert.alert('Success', 'Emergency contact removed successfully!');
+        await dispatch(
+          removeEmergencyContact({ userId: user.uid, contactIndex: index }),
+        ).unwrap();
+        Alert.alert("Success", "Contact removed!");
       }
     } catch (error) {
-      console.error('Remove Contact Error:', error);
-      Alert.alert('Error', 'Failed to remove emergency contact. Please try again.');
+      Alert.alert("Error", "Failed to remove contact.");
     }
   };
 
-  const handleUpdateEmergencyContact = async (index: number, updatedContact: EmergencyContactType) => {
+  const handleUpdateEmergencyContact = async (
+    index: number,
+    updatedContact: EmergencyContactType,
+  ) => {
     try {
       if (user?.uid) {
-        await dispatch(updateEmergencyContact({
-          userId: user.uid,
-          contactIndex: index,
-          contact: updatedContact
-        })).unwrap();
-        Alert.alert('Success', 'Emergency contact updated successfully!');
+        await dispatch(
+          updateEmergencyContact({
+            userId: user.uid,
+            contactIndex: index,
+            contact: updatedContact,
+          }),
+        ).unwrap();
+        Alert.alert("Success", "Contact updated!");
       }
     } catch (error) {
-      console.error('Update Contact Error:', error);
-      Alert.alert('Error', 'Failed to update emergency contact. Please try again.');
+      Alert.alert("Error", "Failed to update contact.");
     }
   };
 
-  if (!user) {
-    return (
-      <View style={styles.container}>
-        <Text style={styles.errorText}>User not found</Text>
-      </View>
-    );
-  }
+  const handleUpdatePassword = async () => {
+    if (!currentPassword || !newPassword) {
+      Alert.alert("Error", "Please fill in all fields");
+      return;
+    }
+    setIsUpdatingPassword(true);
+    try {
+      await dispatch(changePassword({ currentPassword, newPassword })).unwrap();
+      setShowChangePassword(false);
+      setCurrentPassword("");
+      setNewPassword("");
+      Alert.alert("Success", "Password updated successfully!");
+    } catch (error: any) {
+      Alert.alert("Error", error.message || "Failed to update password");
+    } finally {
+      setIsUpdatingPassword(false);
+    }
+  };
+
+  const handleLogout = () => {
+    Alert.alert("Logout", "Are you sure you want to logout?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Logout",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await dispatch(signOutUser()).unwrap();
+            router.replace("/auth/login");
+          } catch (error) {
+            Alert.alert("Error", "Failed to logout.");
+          }
+        },
+      },
+    ]);
+  };
+
+  if (!user) return null;
 
   return (
-    <ScrollView style={styles.container}>
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" />
       <View style={styles.header}>
-        <Text style={styles.title}>Profile</Text>
-        <Text style={styles.subtitle}>Manage your account and emergency contacts</Text>
-      </View>
-
-      {/* Profile Card */}
-      <View style={styles.profileSection}>
-        <ProfileCard
-          user={user}
-          isEditing={isEditing}
-          onUpdate={handleSaveProfile}
-        />
-      </View>
-
-      {/* Emergency Contacts */}
-      <View style={styles.emergencySection}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Emergency Contacts</Text>
+        <View style={styles.headerTop}>
+          <View>
+            <Text style={styles.welcomeText}>My Profile</Text>
+            <Text style={styles.statusText}>{user.email}</Text>
+          </View>
           <TouchableOpacity
-            style={styles.addButton}
-            onPress={() => setShowEmergencyContacts(true)}
+            style={styles.logoutIconButton}
+            onPress={handleLogout}
           >
-            <Text style={styles.addButtonText}>+ Add Contact</Text>
+            <Ionicons name="log-out-outline" size={28} color={COLORS.white} />
           </TouchableOpacity>
         </View>
+      </View>
 
-        {isLoading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#e74c3c" />
-            <Text style={styles.loadingText}>Loading contacts...</Text>
+      <ScrollView
+        style={styles.content}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 40 }}
+      >
+        <View style={styles.profileCardWrapper}>
+          <ProfileCard
+            user={user}
+            isEditing={isEditing}
+            onUpdate={handleSaveProfile}
+          />
+        </View>
+
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Emergency Contacts</Text>
+            <TouchableOpacity
+              style={styles.addButton}
+              onPress={() => setShowEmergencyContacts(true)}
+            >
+              <Ionicons name="add-circle" size={20} color={COLORS.primary} />
+              <Text style={styles.addButtonText}>Add New</Text>
+            </TouchableOpacity>
           </View>
-        ) : user.emergencyContacts && user.emergencyContacts.length > 0 ? (
-          <View style={styles.contactsList}>
-            {user.emergencyContacts.map((contact, index) => (
+
+          {isLoading ? (
+            <ActivityIndicator
+              size="small"
+              color={COLORS.primary}
+              style={{ margin: 20 }}
+            />
+          ) : user.emergencyContacts && user.emergencyContacts.length > 0 ? (
+            user.emergencyContacts.map((contact, index) => (
               <View key={index} style={styles.contactItem}>
+                <View style={styles.contactIconCircle}>
+                  <Ionicons name="person" size={20} color={COLORS.primary} />
+                </View>
                 <View style={styles.contactInfo}>
                   <Text style={styles.contactName}>{contact.name}</Text>
                   <Text style={styles.contactPhone}>{contact.phone}</Text>
                   <Text style={styles.contactRelation}>{contact.relation}</Text>
                 </View>
-                <View style={styles.contactActions}>
-                  <TouchableOpacity
-                    style={styles.editButton}
-                    onPress={() => {
-                      setShowEmergencyContacts(true);
-                    }}
-                  >
-                    <Text style={styles.editButtonText}>Edit</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.deleteButton}
-                    onPress={() => {
-                      Alert.alert(
-                        'Remove Contact',
-                        `Are you sure you want to remove ${contact.name}?`,
-                        [
-                          { text: 'Cancel', style: 'cancel' },
-                          {
-                            text: 'Remove',
-                            style: 'destructive',
-                            onPress: () => handleRemoveEmergencyContact(index)
-                          }
-                        ]
-                      );
-                    }}
-                  >
-                    <Text style={styles.deleteButtonText}>Delete</Text>
-                  </TouchableOpacity>
-                </View>
+                <TouchableOpacity
+                  onPress={() => {
+                    Alert.alert("Remove", `Remove ${contact.name}?`, [
+                      { text: "Cancel", style: "cancel" },
+                      {
+                        text: "Remove",
+                        style: "destructive",
+                        onPress: () => handleRemoveEmergencyContact(index),
+                      },
+                    ]);
+                  }}
+                >
+                  <Ionicons
+                    name="trash-outline"
+                    size={20}
+                    color={COLORS.danger}
+                  />
+                </TouchableOpacity>
               </View>
-            ))}
-          </View>
-        ) : (
-          <View style={styles.noContacts}>
-            <Text style={styles.noContactsText}>
-              No emergency contacts added yet
+            ))
+          ) : (
+            <Text style={styles.emptyText}>No contacts added yet.</Text>
+          )}
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>App Permissions</Text>
+          <View style={styles.settingItem}>
+            <View style={styles.settingInfo}>
+              <Ionicons name="location" size={20} color={COLORS.accent} />
+              <Text style={styles.settingLabel}>Location Access</Text>
+            </View>
+            <Text
+              style={[
+                styles.statusBadge,
+                permissions.location === "Granted"
+                  ? styles.statusSuccess
+                  : styles.statusError,
+              ]}
+            >
+              {permissions.location}
             </Text>
-            <Text style={styles.noContactsSubtext}>
-              Add emergency contacts to receive SOS alerts
+          </View>
+          <View style={styles.settingItem}>
+            <View style={styles.settingInfo}>
+              <Ionicons
+                name="chatbox-ellipses"
+                size={20}
+                color={COLORS.success}
+              />
+              <Text style={styles.settingLabel}>SMS Services</Text>
+            </View>
+            <Text
+              style={[
+                styles.statusBadge,
+                permissions.sms === "Available"
+                  ? styles.statusSuccess
+                  : styles.statusError,
+              ]}
+            >
+              {permissions.sms}
             </Text>
           </View>
-        )}
-      </View>
-
-      {/* App Settings */}
-      <View style={styles.settingsSection}>
-        <Text style={styles.sectionTitle}>App Settings</Text>
-
-        <TouchableOpacity style={styles.settingItem}>
-          <Text style={styles.settingLabel}>Notifications</Text>
-          <Text style={styles.settingValue}>Enabled</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.settingItem}>
-          <Text style={styles.settingLabel}>Location Services</Text>
-          <Text style={styles.settingValue}>Enabled</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.settingItem}>
-          <Text style={styles.settingLabel}>Shake Detection</Text>
-          <Text style={styles.settingValue}>Enabled</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.settingItem}>
-          <Text style={styles.settingLabel}>Auto SOS</Text>
-          <Text style={styles.settingValue}>Disabled</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* App Information */}
-      <View style={styles.infoSection}>
-        <Text style={styles.sectionTitle}>App Information</Text>
-
-        <View style={styles.infoItem}>
-          <Text style={styles.infoLabel}>Version</Text>
-          <Text style={styles.infoValue}>1.0.0</Text>
         </View>
 
-        <View style={styles.infoItem}>
-          <Text style={styles.infoLabel}>Build</Text>
-          <Text style={styles.infoValue}>2024.10.03</Text>
-        </View>
+        <TouchableOpacity
+          style={styles.menuItem}
+          onPress={() => setShowChangePassword(true)}
+        >
+          <View style={styles.menuInfo}>
+            <View
+              style={[
+                styles.iconBox,
+                { backgroundColor: COLORS.secondary + "15" },
+              ]}
+            >
+              <Ionicons name="lock-closed" size={20} color={COLORS.secondary} />
+            </View>
+            <Text style={styles.menuLabel}>Change Password</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color={COLORS.grey} />
+        </TouchableOpacity>
 
-        <View style={styles.infoItem}>
-          <Text style={styles.infoLabel}>Last Updated</Text>
-          <Text style={styles.infoValue}>
-            {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'Unknown'}
-          </Text>
+        <View style={styles.footerInfo}>
+          <Text style={styles.versionText}>Version 1.2.0 • Build 241003</Text>
         </View>
-      </View>
+      </ScrollView>
 
-      {/* Emergency Contacts Modal */}
-      <Modal
-        visible={showEmergencyContacts}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowEmergencyContacts(false)}
-      >
+      <Modal visible={showChangePassword} transparent animationType="fade">
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContainer}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalHeaderTitle}>Manage Emergency Contacts</Text>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Update Password</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Current Password"
+              secureTextEntry
+              value={currentPassword}
+              onChangeText={setCurrentPassword}
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="New Password"
+              secureTextEntry
+              value={newPassword}
+              onChangeText={setNewPassword}
+            />
+            <View style={styles.modalButtons}>
               <TouchableOpacity
-                onPress={() => setShowEmergencyContacts(false)}
-                style={styles.closeButton}
+                style={styles.cancelBtn}
+                onPress={() => setShowChangePassword(false)}
               >
-                <Ionicons name="close" size={24} color="#2c3e50" />
+                <Text>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.saveBtn}
+                onPress={handleUpdatePassword}
+              >
+                <Text style={styles.saveBtnText}>Update</Text>
               </TouchableOpacity>
             </View>
-            {isLoading ? (
-              <View style={styles.modalLoadingContainer}>
-                <ActivityIndicator size="large" color="#e74c3c" />
-                <Text style={styles.loadingText}>Processing...</Text>
-              </View>
-            ) : (
-              <EmergencyContacts
-                contacts={user.emergencyContacts || []}
-                isEditing={true}
-                onAdd={handleAddEmergencyContact}
-                onRemove={handleRemoveEmergencyContact}
-                onUpdate={handleUpdateEmergencyContact}
-              />
-            )}
           </View>
         </View>
       </Modal>
-    </ScrollView>
+
+      <Modal visible={showEmergencyContacts} transparent animationType="slide">
+        <View style={styles.fullModal}>
+          <View style={styles.fullModalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Manage Contacts</Text>
+              <TouchableOpacity onPress={() => setShowEmergencyContacts(false)}>
+                <Ionicons name="close" size={24} color={COLORS.text} />
+              </TouchableOpacity>
+            </View>
+            <EmergencyContacts
+              contacts={user.emergencyContacts || []}
+              isEditing={true}
+              onAdd={handleAddEmergencyContact}
+              onRemove={handleRemoveEmergencyContact}
+              onUpdate={handleUpdateEmergencyContact}
+            />
+          </View>
+        </View>
+      </Modal>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: COLORS.background,
   },
   header: {
-    backgroundColor: '#e74c3c',
-    padding: 20,
-    alignItems: 'center',
+    backgroundColor: COLORS.primary,
+    paddingTop: 80,
+    paddingBottom: 70,
+    paddingHorizontal: 25,
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
+    zIndex: 2,
+    ...SHADOWS.medium,
   },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#ffffff',
-    marginBottom: 5,
+  headerTop: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
-  subtitle: {
-    fontSize: 16,
-    color: '#ffffff',
+  welcomeText: {
+    fontSize: SIZES.h2,
+    fontWeight: "800",
+    color: COLORS.white,
+  },
+  statusText: {
+    fontSize: SIZES.small,
+    color: COLORS.white,
     opacity: 0.9,
-    textAlign: 'center',
+    marginTop: 5,
+    fontWeight: "600",
   },
-  profileSection: {
-    backgroundColor: '#ffffff',
-    margin: 15,
-    borderRadius: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
+  logoutIconButton: {
+    padding: 5,
   },
-  emergencySection: {
-    backgroundColor: '#ffffff',
-    marginHorizontal: 15,
-    marginBottom: 15,
+  content: {
+    flex: 1,
+    marginTop: -40,
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    zIndex: 10,
+    elevation: 8,
+  },
+  profileCardWrapper: {
+    marginTop: -20,
+    marginBottom: 20,
+  },
+  section: {
+    backgroundColor: COLORS.white,
+    borderRadius: 20,
     padding: 20,
-    borderRadius: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
+    marginBottom: 20,
+    ...SHADOWS.medium,
   },
   sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 15,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 20,
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#2c3e50',
+    fontWeight: "bold",
+    color: COLORS.text,
   },
   addButton: {
-    backgroundColor: '#e74c3c',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 15,
+    flexDirection: "row",
+    alignItems: "center",
   },
   addButtonText: {
-    color: '#ffffff',
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
-  loadingContainer: {
-    alignItems: 'center',
-    paddingVertical: 30,
-  },
-  loadingText: {
-    marginTop: 10,
+    color: COLORS.primary,
+    fontWeight: "bold",
+    marginLeft: 5,
     fontSize: 14,
-    color: '#7f8c8d',
-  },
-  contactsList: {
-    marginTop: 10,
   },
   contactItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#ecf0f1',
+    borderBottomColor: COLORS.lightGrey,
+  },
+  contactIconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: COLORS.primary + "15",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
   },
   contactInfo: {
     flex: 1,
   },
   contactName: {
     fontSize: 16,
-    fontWeight: 'bold',
-    color: '#2c3e50',
-    marginBottom: 2,
+    fontWeight: "700",
+    color: COLORS.text,
   },
   contactPhone: {
     fontSize: 14,
-    color: '#7f8c8d',
-    marginBottom: 2,
+    color: COLORS.textLight,
   },
   contactRelation: {
     fontSize: 12,
-    color: '#95a5a6',
-    fontStyle: 'italic',
+    color: COLORS.primary,
+    fontWeight: "500",
   },
-  contactActions: {
-    flexDirection: 'row',
-  },
-  editButton: {
-    backgroundColor: '#3498db',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
-    marginRight: 8,
-  },
-  editButtonText: {
-    color: '#ffffff',
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
-  deleteButton: {
-    backgroundColor: '#e74c3c',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
-  },
-  deleteButtonText: {
-    color: '#ffffff',
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
-  noContacts: {
-    alignItems: 'center',
-    paddingVertical: 30,
-  },
-  noContactsText: {
-    fontSize: 16,
-    color: '#7f8c8d',
-    marginBottom: 5,
-  },
-  noContactsSubtext: {
-    fontSize: 14,
-    color: '#95a5a6',
-    textAlign: 'center',
-  },
-  settingsSection: {
-    backgroundColor: '#ffffff',
-    marginHorizontal: 15,
-    marginBottom: 15,
-    padding: 20,
-    borderRadius: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
+  emptyText: {
+    textAlign: "center",
+    color: COLORS.textLight,
+    fontStyle: "italic",
   },
   settingItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#ecf0f1',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: 15,
+  },
+  settingInfo: {
+    flexDirection: "row",
+    alignItems: "center",
   },
   settingLabel: {
+    fontSize: 15,
+    color: COLORS.text,
+    marginLeft: 10,
+    fontWeight: "500",
+  },
+  statusBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    fontSize: 12,
+    fontWeight: "bold",
+  },
+  statusSuccess: {
+    backgroundColor: COLORS.success + "15",
+    color: COLORS.success,
+  },
+  statusError: {
+    backgroundColor: COLORS.danger + "15",
+    color: COLORS.danger,
+  },
+  menuItem: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: COLORS.white,
+    padding: 15,
+    borderRadius: 20,
+    marginBottom: 20,
+    ...SHADOWS.light,
+  },
+  menuInfo: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  iconBox: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 15,
+  },
+  menuLabel: {
     fontSize: 16,
-    color: '#2c3e50',
+    fontWeight: "600",
+    color: COLORS.text,
   },
-  settingValue: {
-    fontSize: 14,
-    color: '#27ae60',
-    fontWeight: '500',
+  footerInfo: {
+    alignItems: "center",
+    marginTop: 10,
+    marginBottom: 20,
   },
-  infoSection: {
-    backgroundColor: '#ffffff',
-    marginHorizontal: 15,
-    marginBottom: 30,
-    padding: 20,
-    borderRadius: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  infoItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 8,
-  },
-  infoLabel: {
-    fontSize: 14,
-    color: '#7f8c8d',
-  },
-  infoValue: {
-    fontSize: 14,
-    color: '#2c3e50',
-    fontWeight: '500',
-  },
-  errorText: {
-    fontSize: 18,
-    color: '#e74c3c',
-    textAlign: 'center',
-    marginTop: 50,
+  versionText: {
+    color: COLORS.textLight,
+    fontSize: 12,
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    padding: 25,
   },
-  modalContainer: {
-    backgroundColor: '#f8f9fa',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    maxHeight: '90%',
-    paddingBottom: 20,
+  modalContent: {
+    backgroundColor: COLORS.white,
+    borderRadius: 25,
+    padding: 25,
+    ...SHADOWS.heavy,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    marginBottom: 20,
+    color: COLORS.text,
+  },
+  input: {
+    backgroundColor: COLORS.background,
+    borderRadius: 12,
+    padding: 15,
+    marginBottom: 15,
+    borderWidth: 1,
+    borderColor: COLORS.lightGrey,
+  },
+  modalButtons: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    marginTop: 10,
+  },
+  cancelBtn: {
+    padding: 12,
+    marginRight: 15,
+  },
+  saveBtn: {
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 25,
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+  saveBtnText: {
+    color: COLORS.white,
+    fontWeight: "bold",
+  },
+  fullModal: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "flex-end",
+  },
+  fullModalContent: {
+    backgroundColor: COLORS.background,
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    height: "90%",
+    padding: 20,
   },
   modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 20,
-    backgroundColor: '#ffffff',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#ecf0f1',
-  },
-  modalHeaderTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#2c3e50',
-  },
-  closeButton: {
-    padding: 4,
-  },
-  modalLoadingContainer: {
-    alignItems: 'center',
-    paddingVertical: 50,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 20,
   },
 });
