@@ -13,6 +13,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { fetchAllUsers } from "../../redux/slices/authSlice";
 import { fetchSOSEvents } from "../../redux/slices/sosSlice";
 import { AppDispatch, RootState } from "../../redux/store";
+import { isAdminUser } from "../../services/authService";
 import { COLORS, SHADOWS, SIZES } from "../../utils/theme";
 import ActivityLogsTable from "../admin/components/ActivityLogsTable";
 import EmergencyContactsTable from "../admin/components/EmergencyContactsTable";
@@ -63,7 +64,7 @@ export default function AdminScreen() {
     setRefreshing(false);
   }, [loadData]);
 
-  const isAdmin = user?.email === "admin@safetyapp.com";
+  const isAdmin = user ? isAdminUser(user.email) : false;
 
   if (!isAdmin) {
     return (
@@ -127,7 +128,7 @@ export default function AdminScreen() {
     <View style={styles.container}>
       <StatusBar barStyle="light-content" />
       <View style={styles.header}>
-        <Text style={styles.title}>Admin Command</Text>
+        <Text style={styles.title}>Admin Dashboard</Text>
         <Text style={styles.subtitle}>System Monitoring & Oversight</Text>
       </View>
 
@@ -275,6 +276,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 12,
     marginRight: 10,
+    marginBottom: 2,
     ...SHADOWS.light,
   },
   activeTabBtn: {
@@ -293,7 +295,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   tabContentWrapper: {
-    padding: 20,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
   },
   errorContainer: {
     flex: 1,

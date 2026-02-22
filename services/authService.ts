@@ -1,22 +1,22 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
-  createUserWithEmailAndPassword,
-  EmailAuthProvider,
-  reauthenticateWithCredential,
-  sendPasswordResetEmail,
-  signInWithEmailAndPassword,
-  signOut,
-  updatePassword,
-  updateProfile,
+    createUserWithEmailAndPassword,
+    EmailAuthProvider,
+    reauthenticateWithCredential,
+    sendPasswordResetEmail,
+    signInWithEmailAndPassword,
+    signOut,
+    updatePassword,
+    updateProfile
 } from "firebase/auth";
 import {
-  collection,
-  deleteDoc,
-  doc,
-  getDoc,
-  getDocs,
-  query,
-  setDoc,
+    collection,
+    deleteDoc,
+    doc,
+    getDoc,
+    getDocs,
+    query,
+    setDoc,
 } from "firebase/firestore";
 import { User as AppUser, EmergencyContact } from "../redux/types";
 import { auth, db } from "./firebase";

@@ -49,8 +49,15 @@ export default function SignupScreen() {
     }
 
     try {
-      await dispatch(signUpUser({ name, email, phone, password })).unwrap();
-      router.replace("/(tabs)/home" as any);
+      const user = await dispatch(
+        signUpUser({ name, email, phone, password }),
+      ).unwrap();
+      const { isAdminUser } = await import("../../services/authService");
+      if (isAdminUser(user.email)) {
+        router.replace("/(tabs)/admin" as any);
+      } else {
+        router.replace("/(tabs)/home" as any);
+      }
     } catch (err) {
       Alert.alert("Signup Failed", error || "An error occurred");
     }

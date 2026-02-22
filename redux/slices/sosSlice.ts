@@ -1,8 +1,8 @@
 import { createAsyncThunk, createSlice, PayloadAction } from "@reduxjs/toolkit";
 import {
-  fetchSOSEvents as fetchSOSEventsService,
-  logSOSEvent as logSOSEventService,
-  updateSOSEventStatus,
+    fetchSOSEvents as fetchSOSEventsService,
+    logSOSEvent as logSOSEventService,
+    updateSOSEventStatus,
 } from "../../services/sosService";
 import { saveSOSLogOffline } from "../../services/sqliteService";
 import { SOSEvent, SOSState } from "../types";
@@ -90,8 +90,8 @@ const sosSlice = createSlice({
       .addCase(fetchSOSEvents.fulfilled, (state, action) => {
         state.isLoading = false;
         state.events = action.payload;
-        // Sync all to SQLite
-        action.payload.forEach((event) => saveSOSLogOffline(event));
+        // Optimization: Don't sync all to SQLite here to avoid UI lock/NPE
+        // Let them be saved individually when needed
       })
       .addCase(fetchSOSEvents.rejected, (state, action) => {
         state.isLoading = false;

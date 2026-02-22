@@ -3,22 +3,22 @@ import { Accelerometer } from "expo-sensors";
 import * as SMS from "expo-sms";
 import React, { useEffect, useRef, useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Switch,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Switch,
+    Text,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import { useDispatch, useSelector } from "react-redux";
 import {
-  getCurrentLocation,
-  setLocation,
-  startLocationTracking,
-  stopTracking,
+    getCurrentLocation,
+    setLocation,
+    startLocationTracking,
+    stopTracking,
 } from "../../redux/slices/locationSlice";
 import { logSOSEvent, updateSOSStatus } from "../../redux/slices/sosSlice";
 import { AppDispatch, RootState } from "../../redux/store";
@@ -29,9 +29,19 @@ import LiveLocationMap from "../home/components/LiveLocationMap";
 import NearbyHelpCenters from "../home/components/NearbyHelpCenters";
 import SOSButton from "../home/components/SOSButton";
 
+import { useRouter } from "expo-router";
+import { isAdminUser } from "../../services/authService";
+
 export default function HomeScreen() {
+  const router = useRouter();
   const dispatch = useDispatch<AppDispatch>();
   const { user } = useSelector((state: RootState) => state.auth);
+
+  useEffect(() => {
+    if (user && isAdminUser(user.email)) {
+      router.replace("/(tabs)/admin" as any);
+    }
+  }, [user]);
   const { currentLocation, isTracking } = useSelector(
     (state: RootState) => state.location,
   );

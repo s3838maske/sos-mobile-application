@@ -8,9 +8,6 @@
     "scheme": "sosapplication",
     "userInterfaceStyle": "light",
     "newArchEnabled": false,
-    "cli": {
-      "appVersionSource": "app"
-    },
     "ios": {
       "supportsTablet": true
     },
@@ -41,7 +38,6 @@
           }
         }
       ],
-      "expo-web-browser",
       "expo-sqlite"
     ],
     "experiments": {

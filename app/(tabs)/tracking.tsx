@@ -28,7 +28,7 @@ export default function TrackingScreen() {
   const dispatch = useDispatch<AppDispatch>();
   const { user } = useSelector((state: RootState) => state.auth);
   const { currentLocation, isTracking, permissionGranted, isLoading } =
-    useSelector((state: RootState) => state.location);
+    useSelector((state: any) => state.location);
 
   const subscriptionRef = useRef<(() => void) | null>(null);
 

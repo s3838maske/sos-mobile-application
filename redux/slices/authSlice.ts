@@ -1,22 +1,22 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { createAsyncThunk, createSlice, PayloadAction } from "@reduxjs/toolkit";
 import {
-  addEmergencyContact as addEmergencyContactService,
-  changeUserPassword,
-  deleteUser as deleteUserService,
-  forgotPassword,
-  getAllUsers as getAllUsersService,
-  getUserById,
-  removeEmergencyContact as removeEmergencyContactService,
-  signInUser as signInUserService,
-  signOutUser as signOutUserService,
-  signUpUser as signUpUserService,
-  updateEmergencyContact as updateEmergencyContactService,
-  updateUserProfile as updateUserProfileService,
+    addEmergencyContact as addEmergencyContactService,
+    changeUserPassword,
+    deleteUser as deleteUserService,
+    forgotPassword,
+    getAllUsers as getAllUsersService,
+    getUserById,
+    removeEmergencyContact as removeEmergencyContactService,
+    signInUser as signInUserService,
+    signOutUser as signOutUserService,
+    signUpUser as signUpUserService,
+    updateEmergencyContact as updateEmergencyContactService,
+    updateUserProfile as updateUserProfileService,
 } from "../../services/authService";
 import {
-  saveEmergencyContactsOffline,
-  saveUserProfileOffline,
+    saveEmergencyContactsOffline,
+    saveUserProfileOffline,
 } from "../../services/sqliteService";
 import { AuthState, EmergencyContact, User } from "../types";
 
@@ -189,6 +189,7 @@ const authSlice = createSlice({
         state.isLoading = false;
         state.error = action.error.message || "Sign in failed";
       })
+
       // Sign Up
       .addCase(signUpUser.pending, (state) => {
         state.isLoading = true;

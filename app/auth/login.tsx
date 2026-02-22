@@ -2,17 +2,17 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  SafeAreaView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    KeyboardAvoidingView,
+    Platform,
+    SafeAreaView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import { useDispatch, useSelector } from "react-redux";
 import { signInUser } from "../../redux/slices/authSlice";
@@ -34,8 +34,13 @@ export default function LoginScreen() {
     }
 
     try {
-      await dispatch(signInUser({ email, password })).unwrap();
-      router.replace("/(tabs)/home" as any);
+      const user = await dispatch(signInUser({ email, password })).unwrap();
+      const { isAdminUser } = await import("../../services/authService");
+      if (isAdminUser(user.email)) {
+        router.replace("/(tabs)/admin" as any);
+      } else {
+        router.replace("/(tabs)/home" as any);
+      }
     } catch (err) {
       Alert.alert("Login Failed", error || "An error occurred");
     }

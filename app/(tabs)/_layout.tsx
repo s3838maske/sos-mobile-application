@@ -12,6 +12,7 @@ export default function TabLayout() {
 
   return (
     <Tabs
+      initialRouteName={isAdmin ? "admin" : "home"}
       screenOptions={{
         tabBarActiveTintColor: "#e74c3c",
         tabBarInactiveTintColor: "#7f8c8d",

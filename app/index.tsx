@@ -83,9 +83,9 @@ export default function Index() {
     if (!initialized) return;
     if (isAuthenticated) {
       if (isAdmin) {
-        router.replace("/admin" as any);
+        router.replace("/(tabs)/admin" as any);
       } else {
-        router.replace("/home" as any);
+        router.replace("/(tabs)/home" as any);
       }
     } else {
       router.replace("/auth/login" as any);
