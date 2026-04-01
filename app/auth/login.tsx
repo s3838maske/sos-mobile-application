@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
+import { useForm } from "react-hook-form";
 import {
     ActivityIndicator,
     Alert,
@@ -10,31 +11,43 @@ import {
     StatusBar,
     StyleSheet,
     Text,
-    TextInput,
     TouchableOpacity,
     View,
 } from "react-native";
 import { useDispatch, useSelector } from "react-redux";
+import FormTextInput from "../components/FormTextInput";
 import { signInUser } from "../../redux/slices/authSlice";
 import { AppDispatch, RootState } from "../../redux/store";
 import { COLORS, SHADOWS, SIZES } from "../../utils/theme";
+import { validateEmail, validatePassword } from "../../utils/validations";
 
 export default function LoginScreen() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const dispatch = useDispatch<AppDispatch>();
   const router = useRouter();
   const { isLoading, error } = useSelector((state: RootState) => state.auth);
 
-  const handleLogin = async () => {
-    if (!email || !password) {
-      Alert.alert("Error", "Please fill in all fields");
-      return;
-    }
+  type LoginFormData = {
+    email: string;
+    password: string;
+  };
 
+  const {
+    control,
+    handleSubmit,
+  } = useForm<LoginFormData>({
+    defaultValues: {
+      email: "",
+      password: "",
+    },
+    mode: "onBlur",
+  });
+
+  const handleLogin = async (data: LoginFormData) => {
     try {
-      const user = await dispatch(signInUser({ email, password })).unwrap();
+      const user = await dispatch(
+        signInUser({ email: data.email.trim(), password: data.password }),
+      ).unwrap();
       const { isAdminUser } = await import("../../services/authService");
       if (isAdminUser(user.email)) {
         router.replace("/(tabs)/admin" as any);
@@ -71,51 +84,51 @@ export default function LoginScreen() {
           </View>
 
           <View style={styles.form}>
-            <View style={styles.inputContainer}>
-              <Ionicons
-                name="mail-outline"
-                size={20}
-                color={COLORS.textLight}
-                style={styles.inputIcon}
-              />
-              <TextInput
-                style={styles.input}
-                placeholder="Email Address"
-                placeholderTextColor={COLORS.textLight}
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoCorrect={false}
-                editable={!isLoading}
-              />
-            </View>
+            <FormTextInput
+              control={control}
+              name="email"
+              placeholder="Email Address"
+              isLoading={isLoading}
+              leftIconName="mail-outline"
+              rules={{
+                validate: (value) =>
+                  validateEmail(value).isValid ||
+                  validateEmail(value).error ||
+                  "Invalid email",
+              }}
+              inputProps={{
+                keyboardType: "email-address",
+                autoCapitalize: "none",
+                autoCorrect: false,
+              }}
+            />
 
-            <View style={styles.inputContainer}>
-              <Ionicons
-                name="lock-closed-outline"
-                size={20}
-                color={COLORS.textLight}
-                style={styles.inputIcon}
-              />
-              <TextInput
-                style={styles.input}
-                placeholder="Password"
-                placeholderTextColor={COLORS.textLight}
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry={!showPassword}
-                autoCapitalize="none"
-                editable={!isLoading}
-              />
-              <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-                <Ionicons
-                  name={showPassword ? "eye-off-outline" : "eye-outline"}
-                  size={20}
-                  color={COLORS.textLight}
-                />
-              </TouchableOpacity>
-            </View>
+            <FormTextInput
+              control={control}
+              name="password"
+              placeholder="Password"
+              isLoading={isLoading}
+              leftIconName="lock-closed-outline"
+              rules={{
+                validate: (value) =>
+                  validatePassword(value).isValid ||
+                  validatePassword(value).error ||
+                  "Invalid password",
+              }}
+              inputProps={{
+                secureTextEntry: !showPassword,
+                autoCapitalize: "none",
+              }}
+              rightElement={
+                <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+                  <Ionicons
+                    name={showPassword ? "eye-off-outline" : "eye-outline"}
+                    size={20}
+                    color={COLORS.textLight}
+                  />
+                </TouchableOpacity>
+              }
+            />
 
             <TouchableOpacity
               style={styles.forgotPassword}
@@ -126,7 +139,7 @@ export default function LoginScreen() {
 
             <TouchableOpacity
               style={[styles.button, isLoading && styles.buttonDisabled]}
-              onPress={handleLogin}
+              onPress={handleSubmit(handleLogin)}
               disabled={isLoading}
             >
               {isLoading ? (
@@ -187,26 +200,6 @@ const styles = StyleSheet.create({
   },
   form: {
     width: "100%",
-  },
-  inputContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: COLORS.white,
-    borderRadius: SIZES.radius,
-    paddingHorizontal: 15,
-    marginBottom: 15,
-    borderWidth: 1,
-    borderColor: COLORS.lightGrey,
-    ...SHADOWS.light,
-  },
-  inputIcon: {
-    marginRight: 10,
-  },
-  input: {
-    flex: 1,
-    paddingVertical: 15,
-    fontSize: SIZES.body,
-    color: COLORS.text,
   },
   forgotPassword: {
     alignSelf: "flex-end",

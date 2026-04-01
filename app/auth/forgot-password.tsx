@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import React from "react";
+import { useForm } from "react-hook-form";
 import {
   ActivityIndicator,
   Alert,
@@ -10,29 +11,32 @@ import {
   StatusBar,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
 import { useDispatch, useSelector } from "react-redux";
+import FormTextInput from "../components/FormTextInput";
 import { resetPassword } from "../../redux/slices/authSlice";
 import { AppDispatch, RootState } from "../../redux/store";
 import { COLORS, SHADOWS, SIZES } from "../../utils/theme";
+import { validateEmail } from "../../utils/validations";
 
 export default function ForgotPasswordScreen() {
-  const [email, setEmail] = useState("");
   const dispatch = useDispatch<AppDispatch>();
   const router = useRouter();
   const { isLoading } = useSelector((state: RootState) => state.auth);
 
-  const handleResetPassword = async () => {
-    if (!email) {
-      Alert.alert("Error", "Please enter your email address");
-      return;
-    }
+  const {
+    control,
+    handleSubmit,
+  } = useForm<{ email: string }>({
+    defaultValues: { email: "" },
+    mode: "onBlur",
+  });
 
+  const handleResetPassword = async (data: { email: string }) => {
     try {
-      await dispatch(resetPassword(email)).unwrap();
+      await dispatch(resetPassword(data.email.trim())).unwrap();
       Alert.alert(
         "Success",
         "A password reset link has been sent to your email address.",
@@ -74,29 +78,28 @@ export default function ForgotPasswordScreen() {
           </View>
 
           <View style={styles.form}>
-            <View style={styles.inputContainer}>
-              <Ionicons
-                name="mail-outline"
-                size={20}
-                color={COLORS.textLight}
-                style={styles.inputIcon}
-              />
-              <TextInput
-                style={styles.input}
-                placeholder="Email Address"
-                placeholderTextColor={COLORS.textLight}
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoCorrect={false}
-                editable={!isLoading}
-              />
-            </View>
+            <FormTextInput
+              control={control}
+              name="email"
+              placeholder="Email Address"
+              isLoading={isLoading}
+              leftIconName="mail-outline"
+              rules={{
+                validate: (value) =>
+                  validateEmail(value).isValid ||
+                  validateEmail(value).error ||
+                  "Invalid email",
+              }}
+              inputProps={{
+                keyboardType: "email-address",
+                autoCapitalize: "none",
+                autoCorrect: false,
+              }}
+            />
 
             <TouchableOpacity
               style={[styles.button, isLoading && styles.buttonDisabled]}
-              onPress={handleResetPassword}
+              onPress={handleSubmit(handleResetPassword)}
               disabled={isLoading}
             >
               {isLoading ? (
@@ -162,26 +165,6 @@ const styles = StyleSheet.create({
   },
   form: {
     width: "100%",
-  },
-  inputContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: COLORS.white,
-    borderRadius: SIZES.radius,
-    paddingHorizontal: 15,
-    marginBottom: 25,
-    borderWidth: 1,
-    borderColor: COLORS.lightGrey,
-    ...SHADOWS.light,
-  },
-  inputIcon: {
-    marginRight: 10,
-  },
-  input: {
-    flex: 1,
-    paddingVertical: 15,
-    fontSize: SIZES.body,
-    color: COLORS.text,
   },
   button: {
     backgroundColor: COLORS.primary,

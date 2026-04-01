@@ -111,6 +111,28 @@ export const validateEmergencyContact = (name: string, phone: string): Validatio
   return { isValid: true };
 };
 
+// Validate emergency contact relation
+export const validateRelation = (relation: string): ValidationResult => {
+  if (!relation.trim()) {
+    return { isValid: false, error: 'Relation is required' };
+  }
+
+  if (relation.trim().length < 2) {
+    return { isValid: false, error: 'Relation must be at least 2 characters long' };
+  }
+
+  if (relation.trim().length > 30) {
+    return { isValid: false, error: 'Relation must be less than 30 characters' };
+  }
+
+  const relationRegex = /^[a-zA-Z\s]+$/;
+  if (!relationRegex.test(relation.trim())) {
+    return { isValid: false, error: 'Relation can only contain letters and spaces' };
+  }
+
+  return { isValid: true };
+};
+
 // Validate location coordinates
 export const validateLocation = (latitude: number, longitude: number): ValidationResult => {
   if (typeof latitude !== 'number' || typeof longitude !== 'number') {

@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
+import { useForm } from "react-hook-form";
 import {
   ActivityIndicator,
   Alert,
@@ -11,46 +12,63 @@ import {
   StatusBar,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
 import { useDispatch, useSelector } from "react-redux";
+import FormTextInput from "../components/FormTextInput";
 import { signUpUser } from "../../redux/slices/authSlice";
 import { AppDispatch, RootState } from "../../redux/store";
 import { COLORS, SHADOWS, SIZES } from "../../utils/theme";
+import {
+  validateConfirmPassword,
+  validateEmail,
+  validateName,
+  validatePassword,
+  validatePhoneNumber,
+} from "../../utils/validations";
 
 export default function SignupScreen() {
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
   const dispatch = useDispatch<AppDispatch>();
   const router = useRouter();
   const { isLoading, error } = useSelector((state: RootState) => state.auth);
 
-  const handleSignup = async () => {
-    if (!name || !email || !phone || !password || !confirmPassword) {
-      Alert.alert("Error", "Please fill in all fields");
-      return;
-    }
+  type SignupFormData = {
+    name: string;
+    email: string;
+    phone: string;
+    password: string;
+    confirmPassword: string;
+  };
 
-    if (password !== confirmPassword) {
-      Alert.alert("Error", "Passwords do not match");
-      return;
-    }
+  const {
+    control,
+    handleSubmit,
+    watch,
+  } = useForm<SignupFormData>({
+    defaultValues: {
+      name: "",
+      email: "",
+      phone: "",
+      password: "",
+      confirmPassword: "",
+    },
+    mode: "onBlur",
+  });
 
-    if (password.length < 6) {
-      Alert.alert("Error", "Password must be at least 6 characters");
-      return;
-    }
+  const passwordValue = watch("password");
 
+  const handleSignup = async (data: SignupFormData) => {
     try {
       const user = await dispatch(
-        signUpUser({ name, email, phone, password }),
+        signUpUser({
+          name: data.name.trim(),
+          email: data.email.trim(),
+          phone: data.phone.trim(),
+          password: data.password,
+        }),
       ).unwrap();
       const { isAdminUser } = await import("../../services/authService");
       if (isAdminUser(user.email)) {
@@ -90,106 +108,99 @@ export default function SignupScreen() {
           </View>
 
           <View style={styles.form}>
-            <View style={styles.inputContainer}>
-              <Ionicons
-                name="person-outline"
-                size={20}
-                color={COLORS.textLight}
-                style={styles.inputIcon}
-              />
-              <TextInput
-                style={styles.input}
-                placeholder="Full Name"
-                placeholderTextColor={COLORS.textLight}
-                value={name}
-                onChangeText={setName}
-                autoCapitalize="words"
-                editable={!isLoading}
-              />
-            </View>
+            <FormTextInput
+              control={control}
+              name="name"
+              placeholder="Full Name"
+              isLoading={isLoading}
+              leftIconName="person-outline"
+              rules={{
+                validate: (value) =>
+                  validateName(value).isValid ||
+                  validateName(value).error ||
+                  "Invalid name",
+              }}
+              inputProps={{ autoCapitalize: "words" }}
+            />
 
-            <View style={styles.inputContainer}>
-              <Ionicons
-                name="mail-outline"
-                size={20}
-                color={COLORS.textLight}
-                style={styles.inputIcon}
-              />
-              <TextInput
-                style={styles.input}
-                placeholder="Email Address"
-                placeholderTextColor={COLORS.textLight}
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoCorrect={false}
-                editable={!isLoading}
-              />
-            </View>
+            <FormTextInput
+              control={control}
+              name="email"
+              placeholder="Email Address"
+              isLoading={isLoading}
+              leftIconName="mail-outline"
+              rules={{
+                validate: (value) =>
+                  validateEmail(value).isValid ||
+                  validateEmail(value).error ||
+                  "Invalid email",
+              }}
+              inputProps={{
+                keyboardType: "email-address",
+                autoCapitalize: "none",
+                autoCorrect: false,
+              }}
+            />
 
-            <View style={styles.inputContainer}>
-              <Ionicons
-                name="call-outline"
-                size={20}
-                color={COLORS.textLight}
-                style={styles.inputIcon}
-              />
-              <TextInput
-                style={styles.input}
-                placeholder="Phone Number"
-                placeholderTextColor={COLORS.textLight}
-                value={phone}
-                onChangeText={setPhone}
-                keyboardType="phone-pad"
-                editable={!isLoading}
-              />
-            </View>
+            <FormTextInput
+              control={control}
+              name="phone"
+              placeholder="Phone Number"
+              isLoading={isLoading}
+              leftIconName="call-outline"
+              rules={{
+                validate: (value) =>
+                  validatePhoneNumber(value).isValid ||
+                  validatePhoneNumber(value).error ||
+                  "Invalid phone number",
+              }}
+              inputProps={{ keyboardType: "phone-pad" }}
+            />
 
-            <View style={styles.inputContainer}>
-              <Ionicons
-                name="lock-closed-outline"
-                size={20}
-                color={COLORS.textLight}
-                style={styles.inputIcon}
-              />
-              <TextInput
-                style={styles.input}
-                placeholder="Password"
-                placeholderTextColor={COLORS.textLight}
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry={!showPassword}
-                autoCapitalize="none"
-                editable={!isLoading}
-              />
-              <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-                <Ionicons
-                  name={showPassword ? "eye-off-outline" : "eye-outline"}
-                  size={20}
-                  color={COLORS.textLight}
-                />
-              </TouchableOpacity>
-            </View>
+            <FormTextInput
+              control={control}
+              name="password"
+              placeholder="Password"
+              isLoading={isLoading}
+              leftIconName="lock-closed-outline"
+              rules={{
+                validate: (value) =>
+                  validatePassword(value).isValid ||
+                  validatePassword(value).error ||
+                  "Invalid password",
+              }}
+              inputProps={{
+                secureTextEntry: !showPassword,
+                autoCapitalize: "none",
+              }}
+              rightElement={
+                <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+                  <Ionicons
+                    name={showPassword ? "eye-off-outline" : "eye-outline"}
+                    size={20}
+                    color={COLORS.textLight}
+                  />
+                </TouchableOpacity>
+              }
+            />
 
-            <View style={styles.inputContainer}>
-              <Ionicons
-                name="lock-closed-outline"
-                size={20}
-                color={COLORS.textLight}
-                style={styles.inputIcon}
-              />
-              <TextInput
-                style={styles.input}
-                placeholder="Confirm Password"
-                placeholderTextColor={COLORS.textLight}
-                value={confirmPassword}
-                onChangeText={setConfirmPassword}
-                secureTextEntry={!showPassword}
-                autoCapitalize="none"
-                editable={!isLoading}
-              />
-            </View>
+            <FormTextInput
+              control={control}
+              name="confirmPassword"
+              placeholder="Confirm Password"
+              isLoading={isLoading}
+              leftIconName="lock-closed-outline"
+              rules={{
+                validate: (value) =>
+                  validateConfirmPassword(passwordValue, value).isValid ||
+                  validateConfirmPassword(passwordValue, value).error ||
+                  "Passwords do not match",
+              }}
+              inputProps={{
+                secureTextEntry: !showPassword,
+                autoCapitalize: "none",
+              }}
+            />
 
             <View style={styles.termsContainer}>
               <Text style={styles.termsText}>
@@ -201,7 +212,7 @@ export default function SignupScreen() {
 
             <TouchableOpacity
               style={[styles.button, isLoading && styles.buttonDisabled]}
-              onPress={handleSignup}
+              onPress={handleSubmit(handleSignup)}
               disabled={isLoading}
             >
               {isLoading ? (
@@ -261,26 +272,6 @@ const styles = StyleSheet.create({
   },
   form: {
     width: "100%",
-  },
-  inputContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: COLORS.white,
-    borderRadius: SIZES.radius,
-    paddingHorizontal: 15,
-    marginBottom: 15,
-    borderWidth: 1,
-    borderColor: COLORS.lightGrey,
-    ...SHADOWS.light,
-  },
-  inputIcon: {
-    marginRight: 10,
-  },
-  input: {
-    flex: 1,
-    paddingVertical: 15,
-    fontSize: SIZES.body,
-    color: COLORS.text,
   },
   termsContainer: {
     marginBottom: 25,

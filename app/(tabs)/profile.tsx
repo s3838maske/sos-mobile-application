@@ -3,6 +3,7 @@ import * as Location from "expo-location";
 import { useRouter } from "expo-router";
 import * as SMS from "expo-sms";
 import React, { useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
 import {
   ActivityIndicator,
   Alert,
@@ -11,11 +12,11 @@ import {
   StatusBar,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
 import { useDispatch, useSelector } from "react-redux";
+import FormTextInput from "../components/FormTextInput";
 import {
   addEmergencyContact,
   changePassword,
@@ -28,6 +29,7 @@ import {
 import { AppDispatch, RootState } from "../../redux/store";
 import { EmergencyContact as EmergencyContactType } from "../../redux/types";
 import { COLORS, SHADOWS, SIZES } from "../../utils/theme";
+import { validatePassword } from "../../utils/validations";
 import EmergencyContacts from "../profile/components/EmergencyContacts";
 import ProfileCard from "../profile/components/ProfileCard";
 
@@ -38,12 +40,22 @@ export default function ProfileScreen() {
   const [isEditing, setIsEditing] = useState(false);
   const [showEmergencyContacts, setShowEmergencyContacts] = useState(false);
   const [showChangePassword, setShowChangePassword] = useState(false);
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
   const [permissions, setPermissions] = useState({
     location: "Checking...",
     sms: "Checking...",
+  });
+  const {
+    control,
+    handleSubmit,
+    watch,
+    reset: resetPasswordForm,
+  } = useForm<{ currentPassword: string; newPassword: string }>({
+    defaultValues: {
+      currentPassword: "",
+      newPassword: "",
+    },
+    mode: "onBlur",
   });
 
   const checkPermissions = async () => {
@@ -121,17 +133,20 @@ export default function ProfileScreen() {
     }
   };
 
-  const handleUpdatePassword = async () => {
-    if (!currentPassword || !newPassword) {
-      Alert.alert("Error", "Please fill in all fields");
-      return;
-    }
+  const handleUpdatePassword = async (data: {
+    currentPassword: string;
+    newPassword: string;
+  }) => {
     setIsUpdatingPassword(true);
     try {
-      await dispatch(changePassword({ currentPassword, newPassword })).unwrap();
+      await dispatch(
+        changePassword({
+          currentPassword: data.currentPassword,
+          newPassword: data.newPassword,
+        }),
+      ).unwrap();
       setShowChangePassword(false);
-      setCurrentPassword("");
-      setNewPassword("");
+      resetPasswordForm();
       Alert.alert("Success", "Password updated successfully!");
     } catch (error: any) {
       Alert.alert("Error", error.message || "Failed to update password");
@@ -312,30 +327,43 @@ export default function ProfileScreen() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Update Password</Text>
-            <TextInput
-              style={styles.input}
+            <FormTextInput
+              control={control}
+              name="currentPassword"
               placeholder="Current Password"
-              secureTextEntry
-              value={currentPassword}
-              onChangeText={setCurrentPassword}
+              rules={{ required: "Current password is required" }}
+              inputProps={{ secureTextEntry: true }}
             />
-            <TextInput
-              style={styles.input}
+            <FormTextInput
+              control={control}
+              name="newPassword"
               placeholder="New Password"
-              secureTextEntry
-              value={newPassword}
-              onChangeText={setNewPassword}
+              rules={{
+                validate: (value) => {
+                  const currentPassword = watch("currentPassword");
+                  const validation = validatePassword(value);
+                  if (!validation.isValid) return validation.error || "Invalid password";
+                  if (value === currentPassword) {
+                    return "New password must be different from your current password";
+                  }
+                  return true;
+                },
+              }}
+              inputProps={{ secureTextEntry: true }}
             />
             <View style={styles.modalButtons}>
               <TouchableOpacity
                 style={styles.cancelBtn}
-                onPress={() => setShowChangePassword(false)}
+                onPress={() => {
+                  setShowChangePassword(false);
+                  resetPasswordForm();
+                }}
               >
                 <Text>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.saveBtn}
-                onPress={handleUpdatePassword}
+                onPress={handleSubmit(handleUpdatePassword)}
               >
                 <Text style={styles.saveBtnText}>Update</Text>
               </TouchableOpacity>
@@ -564,14 +592,6 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     marginBottom: 20,
     color: COLORS.text,
-  },
-  input: {
-    backgroundColor: COLORS.background,
-    borderRadius: 12,
-    padding: 15,
-    marginBottom: 15,
-    borderWidth: 1,
-    borderColor: COLORS.lightGrey,
   },
   modalButtons: {
     flexDirection: "row",

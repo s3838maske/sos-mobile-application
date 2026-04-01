@@ -1,15 +1,21 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
+import { useForm } from 'react-hook-form';
 import {
   Alert,
   Modal,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
+import FormTextInput from '../../components/FormTextInput';
 import { EmergencyContact } from '../../../redux/types';
+import {
+  validateName,
+  validatePhoneNumber,
+  validateRelation,
+} from '../../../utils/validations';
 
 interface EmergencyContactsProps {
   contacts: EmergencyContact[];
@@ -28,45 +34,43 @@ export default function EmergencyContacts({
 }: EmergencyContactsProps) {
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
-  const [newContact, setNewContact] = useState({ name: '', phone: '', relation: '' });
+  type ContactFormData = { name: string; phone: string; relation: string };
+  const {
+    control,
+    handleSubmit,
+    reset,
+  } = useForm<ContactFormData>({
+    defaultValues: { name: '', phone: '', relation: '' },
+    mode: 'onBlur',
+  });
 
-  const handleAddContact = () => {
-    if (!newContact.name.trim() || !newContact.phone.trim() || !newContact.relation.trim()) {
-      Alert.alert('Error', 'Please fill in all fields');
-      return;
-    }
-
+  const handleAddContact = (data: ContactFormData) => {
     onAdd({
-      name: newContact.name.trim(),
-      phone: newContact.phone.trim(),
-      relation: newContact.relation.trim(),
+      name: data.name.trim(),
+      phone: data.phone.trim(),
+      relation: data.relation.trim(),
     });
 
-    setNewContact({ name: '', phone: '', relation: '' });
+    reset({ name: '', phone: '', relation: '' });
     setShowAddModal(false);
   };
 
   const handleEditContact = (index: number, contact: EmergencyContact) => {
     setEditingIndex(index);
-    setNewContact({ name: contact.name, phone: contact.phone, relation: contact.relation });
+    reset({ name: contact.name, phone: contact.phone, relation: contact.relation });
     setShowAddModal(true);
   };
 
-  const handleUpdateContact = () => {
-    if (!newContact.name.trim() || !newContact.phone.trim() || !newContact.relation.trim()) {
-      Alert.alert('Error', 'Please fill in all fields');
-      return;
-    }
-
+  const handleUpdateContact = (data: ContactFormData) => {
     if (editingIndex !== null) {
       onUpdate(editingIndex, {
-        name: newContact.name.trim(),
-        phone: newContact.phone.trim(),
-        relation: newContact.relation.trim(),
+        name: data.name.trim(),
+        phone: data.phone.trim(),
+        relation: data.relation.trim(),
       });
     }
 
-    setNewContact({ name: '', phone: '', relation: '' });
+    reset({ name: '', phone: '', relation: '' });
     setEditingIndex(null);
     setShowAddModal(false);
   };
@@ -98,7 +102,11 @@ export default function EmergencyContacts({
         {isEditing && (
           <TouchableOpacity
             style={styles.addButton}
-            onPress={() => setShowAddModal(true)}
+            onPress={() => {
+              setEditingIndex(null);
+              reset({ name: '', phone: '', relation: '' });
+              setShowAddModal(true);
+            }}
           >
             <Ionicons name="add" size={20} color="white" />
           </TouchableOpacity>
@@ -169,26 +177,41 @@ export default function EmergencyContacts({
               {editingIndex !== null ? 'Edit Contact' : 'Add Emergency Contact'}
             </Text>
 
-            <TextInput
-              style={styles.modalInput}
+            <FormTextInput
+              control={control}
+              name="name"
               placeholder="Contact Name"
-              value={newContact.name}
-              onChangeText={(text) => setNewContact({ ...newContact, name: text })}
+              rules={{
+                validate: (value) =>
+                  validateName(value).isValid ||
+                  validateName(value).error ||
+                  'Invalid contact name',
+              }}
             />
 
-            <TextInput
-              style={styles.modalInput}
+            <FormTextInput
+              control={control}
+              name="phone"
               placeholder="Phone Number"
-              value={newContact.phone}
-              onChangeText={(text) => setNewContact({ ...newContact, phone: text })}
-              keyboardType="phone-pad"
+              rules={{
+                validate: (value) =>
+                  validatePhoneNumber(value).isValid ||
+                  validatePhoneNumber(value).error ||
+                  'Invalid phone number',
+              }}
+              inputProps={{ keyboardType: 'phone-pad' }}
             />
 
-            <TextInput
-              style={styles.modalInput}
+            <FormTextInput
+              control={control}
+              name="relation"
               placeholder="Relation (e.g., Mother, Father, Friend)"
-              value={newContact.relation}
-              onChangeText={(text) => setNewContact({ ...newContact, relation: text })}
+              rules={{
+                validate: (value) =>
+                  validateRelation(value).isValid ||
+                  validateRelation(value).error ||
+                  'Invalid relation',
+              }}
             />
 
             <View style={styles.modalActions}>
@@ -197,7 +220,7 @@ export default function EmergencyContacts({
                 onPress={() => {
                   setShowAddModal(false);
                   setEditingIndex(null);
-                  setNewContact({ name: '', phone: '', relation: '' });
+                  reset({ name: '', phone: '', relation: '' });
                 }}
               >
                 <Text style={styles.modalCancelText}>Cancel</Text>
@@ -205,7 +228,9 @@ export default function EmergencyContacts({
 
               <TouchableOpacity
                 style={styles.modalSaveButton}
-                onPress={editingIndex !== null ? handleUpdateContact : handleAddContact}
+                onPress={handleSubmit(
+                  editingIndex !== null ? handleUpdateContact : handleAddContact,
+                )}
               >
                 <Text style={styles.modalSaveText}>
                   {editingIndex !== null ? 'Update' : 'Add'}
@@ -329,14 +354,6 @@ const styles = StyleSheet.create({
     color: '#2c3e50',
     marginBottom: 20,
     textAlign: 'center',
-  },
-  modalInput: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    marginBottom: 15,
   },
   modalActions: {
     flexDirection: 'row',

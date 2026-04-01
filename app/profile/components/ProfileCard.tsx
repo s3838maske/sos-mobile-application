@@ -1,14 +1,19 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useState } from 'react';
+import React, { useEffect } from 'react';
+import { useForm } from 'react-hook-form';
 import {
-    Alert,
     StyleSheet,
     Text,
-    TextInput,
     TouchableOpacity,
     View,
 } from 'react-native';
+import FormTextInput from '../../components/FormTextInput';
 import { User } from '../../../redux/types';
+import {
+  validateEmail,
+  validateName,
+  validatePhoneNumber,
+} from '../../../utils/validations';
 
 interface ProfileCardProps {
   user: User | null;
@@ -17,27 +22,47 @@ interface ProfileCardProps {
 }
 
 export default function ProfileCard({ user, isEditing, onUpdate }: ProfileCardProps) {
-  const [name, setName] = useState(user?.name || '');
-  const [email, setEmail] = useState(user?.email || '');
-  const [phone, setPhone] = useState(user?.phone || '');
+  type ProfileFormData = {
+    name: string;
+    email: string;
+    phone: string;
+  };
 
-  const handleSave = () => {
-    if (!name.trim() || !email.trim() || !phone.trim()) {
-      Alert.alert('Error', 'Please fill in all fields');
-      return;
-    }
+  const {
+    control,
+    handleSubmit,
+    reset,
+  } = useForm<ProfileFormData>({
+    defaultValues: {
+      name: user?.name || '',
+      email: user?.email || '',
+      phone: user?.phone || '',
+    },
+    mode: 'onBlur',
+  });
 
+  useEffect(() => {
+    reset({
+      name: user?.name || '',
+      email: user?.email || '',
+      phone: user?.phone || '',
+    });
+  }, [user, reset]);
+
+  const handleSave = (data: ProfileFormData) => {
     onUpdate({
-      name: name.trim(),
-      email: email.trim(),
-      phone: phone.trim(),
+      name: data.name.trim(),
+      email: data.email.trim(),
+      phone: data.phone.trim(),
     });
   };
 
   const handleCancel = () => {
-    setName(user?.name || '');
-    setEmail(user?.email || '');
-    setPhone(user?.phone || '');
+    reset({
+      name: user?.name || '',
+      email: user?.email || '',
+      phone: user?.phone || '',
+    });
   };
 
   return (
@@ -58,11 +83,16 @@ export default function ProfileCard({ user, isEditing, onUpdate }: ProfileCardPr
         <View style={styles.field}>
           <Text style={styles.fieldLabel}>Full Name</Text>
           {isEditing ? (
-            <TextInput
-              style={styles.input}
-              value={name}
-              onChangeText={setName}
+            <FormTextInput
+              control={control}
+              name="name"
               placeholder="Enter your full name"
+              rules={{
+                validate: (value) =>
+                  validateName(value).isValid ||
+                  validateName(value).error ||
+                  'Invalid name',
+              }}
             />
           ) : (
             <Text style={styles.fieldValue}>{user?.name || 'Not provided'}</Text>
@@ -72,13 +102,20 @@ export default function ProfileCard({ user, isEditing, onUpdate }: ProfileCardPr
         <View style={styles.field}>
           <Text style={styles.fieldLabel}>Email</Text>
           {isEditing ? (
-            <TextInput
-              style={styles.input}
-              value={email}
-              onChangeText={setEmail}
+            <FormTextInput
+              control={control}
+              name="email"
               placeholder="Enter your email"
-              keyboardType="email-address"
-              autoCapitalize="none"
+              rules={{
+                validate: (value) =>
+                  validateEmail(value).isValid ||
+                  validateEmail(value).error ||
+                  'Invalid email',
+              }}
+              inputProps={{
+                keyboardType: 'email-address',
+                autoCapitalize: 'none',
+              }}
             />
           ) : (
             <Text style={styles.fieldValue}>{user?.email || 'Not provided'}</Text>
@@ -88,12 +125,17 @@ export default function ProfileCard({ user, isEditing, onUpdate }: ProfileCardPr
         <View style={styles.field}>
           <Text style={styles.fieldLabel}>Phone Number</Text>
           {isEditing ? (
-            <TextInput
-              style={styles.input}
-              value={phone}
-              onChangeText={setPhone}
+            <FormTextInput
+              control={control}
+              name="phone"
               placeholder="Enter your phone number"
-              keyboardType="phone-pad"
+              rules={{
+                validate: (value) =>
+                  validatePhoneNumber(value).isValid ||
+                  validatePhoneNumber(value).error ||
+                  'Invalid phone number',
+              }}
+              inputProps={{ keyboardType: 'phone-pad' }}
             />
           ) : (
             <Text style={styles.fieldValue}>{user?.phone || 'Not provided'}</Text>
@@ -112,7 +154,7 @@ export default function ProfileCard({ user, isEditing, onUpdate }: ProfileCardPr
             <TouchableOpacity style={styles.cancelButton} onPress={handleCancel}>
               <Text style={styles.cancelButtonText}>Cancel</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
+            <TouchableOpacity style={styles.saveButton} onPress={handleSubmit(handleSave)}>
               <Text style={styles.saveButtonText}>Save Changes</Text>
             </TouchableOpacity>
           </View>
@@ -184,14 +226,6 @@ const styles = StyleSheet.create({
     marginBottom: 5,
   },
   fieldValue: {
-    fontSize: 16,
-    color: '#2c3e50',
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    padding: 12,
     fontSize: 16,
     color: '#2c3e50',
   },
